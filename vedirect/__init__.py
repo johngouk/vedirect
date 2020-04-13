@@ -1,2 +1,2 @@
-from .vedirect import Vedirect
-from .vedirectsim import Vedirectsim
+from .vedirect import VEDirect
+from .vedirect_emulator import VEDirectEmulator

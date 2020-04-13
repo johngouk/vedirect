@@ -1,11 +1,11 @@
 from setuptools import setup
 
-setup(name='vedirect',
-      version='0.1',
-      description='Victron VE.Direct decoder for Python',
-      url='https://github.com/karioja/vedirect',
-      author='Janne Kario',
-      author_email='janne.kario@gmail.com',
+setup(name='vedirect-jmfife',
+      version='0.2',
+      description='Victron VE.Direct decoder for Python, forked from karioja',
+      url='https://github.com/jmfife/vedirect',
+      author='Janne Kario and Mike Fife',
+      author_email='',
       license='MIT',
       packages=['vedirect'],
       install_requires=[

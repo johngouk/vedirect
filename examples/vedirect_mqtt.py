@@ -3,7 +3,7 @@
 
 import argparse, os
 import paho.mqtt.client as mqtt
-from vedirect import Vedirect
+from vedirect import VEDirect
 
 
 if __name__ == '__main__':
@@ -14,7 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('--mqttbrokerport', help='MQTT broker port', type=int, default='1883')
     parser.add_argument('--topicprefix', help='MQTT topic prefix', type=str, default='vedirect/')
     args = parser.parse_args()
-    ve = Vedirect(args.port, args.timeout)
+    ve = VEDirect(args.port, args.timeout)
 
     client = mqtt.Client()
     client.connect(args.mqttbroker, args.mqttbrokerport, 60)

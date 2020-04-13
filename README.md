@@ -1,4 +1,47 @@
-This is a Python library for decoding the Victron Energy VE.Direct text protocol used in their range of MPPT solar charge controllers and battery monitors.
+# VEDirect
+
+This is a Python library for decoding the Victron Energy VE.Direct text protocol used in their range of MPPT solar 
+charge controllers, battery monitors, and inverters.  
+This is a forked version of a package originally created by Janne Kario (https://github.com/karioja/vedirect).
+
+## Quick Simulation
+
+A simple command line test with a built-in emulator can be performend on any platform without
+an actual VEDirect device using three commands launching three processes (e.g.
+in three terminal windows on the same machine):
+
+First, create a pair of virtual serial ports.
+```
+$ socat -d -d PTY,raw,echo=0,link=/tmp/vmodem0 PTY,raw,echo=0,link=/tmp/vmodem1
+2020/04/13 16:20:43 socat[84720] N PTY is /dev/ttys001
+2020/04/13 16:20:43 socat[84720] N PTY is /dev/ttys005
+2020/04/13 16:20:43 socat[84720] N starting data transfer loop with FDs [5,5] and [7,7]
+```
+
+Next, run the emulator and set it to write to the first port:
+
+```
+% python vedirect/vedirect_emulator.py /dev/ttys001 --model="MPPT" --n=10 --sph=3600
+VEDirect emulator eunning. Writing to serial port /dev/ttys001
+```
+
+Run the VEDirect monitor with the default entry point to display packets to `stdio`:
+
+```
+% python3 vedirect/vedirect.py /dev/ttys005
+Malformed packet
+{'CS': '5', 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0', 'V': '12800', 'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500', 'LOAD': 'ON', 'Relay': 'OFF', 'H19': '456', 'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350', 'ERR': '0'}
+{'CS': '5', 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0', 'V': '12800', 'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500', 'LOAD': 'ON', 'Relay': 'OFF', 'H19': '456', 'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350', 'ERR': '0'}
+{'CS': '5', 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0', 'V': '12800', 'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500', 'LOAD': 'ON', 'Relay': 'OFF', 'H19': '456', 'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350', 'ERR': '0'}
+...
+```
+
+
+## Original README.md
+
+This package was forked from karioja at https://github.com/karioja/vedirect.
+Below is the original README.md with describes use of some examples in the repo.
+
 
 The test directory contains a set of live recordings of the serial port data sent by the 3 devices that I own.
 
