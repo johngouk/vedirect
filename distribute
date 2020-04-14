@@ -1,5 +1,6 @@
 #!/bin/bash
 
 python3 setup.py sdist bdist_wheel
-python3 -m twine upload --skip-existing dist/*
+# users can install using "python3 -m pip install git+https://github.com/jmfife/vedirect"
+# python3 -m twine upload --skip-existing dist/*
 
