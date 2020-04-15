@@ -17,6 +17,8 @@
 
 import os, serial, time, argparse
 
+model_default = 'MPPT'
+
 
 class VEDirectEmulator:
     models = ['ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']
@@ -105,30 +107,37 @@ class VEDirectEmulator:
         return result
 
     def send_packet(self):
+        # print(f'Converting and sending: {self.data[self.model]}')
         packet = self.convert(self.data[self.model])
         self.writer(bytes(packet))
+        print(f'Sent: {packet}')
         # self.ser.write(bytes(packet))
 
     def send_packets(self, n=0, samples_per_hour=720.0):
         """ Send n packets """
+        sleep_seconds = 3600.0/float(samples_per_hour)
         if n:
             for i in range(0, n):
                 self.send_packet()
-                time.sleep(3600.0/float(samples_per_hour))
+                time.sleep(sleep_seconds)
         else:
             while True:
                 self.send_packet()
-                time.sleep(args.interval)
+                time.sleep(sleep_seconds)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='A simple VE.Direct emulator')
     parser.add_argument('port', help='Serial port to write')
     parser.add_argument('--n', help='number of packets to send (or default=0 for infinite)', default=0, type=int)
     parser.add_argument('--sph', default=60, help='samples per hour (default=False)', type=float)
     parser.add_argument('--model', help="one of ['ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']",
-                        default='ALL', type=str)
+                        default=model_default, type=str)
     args = parser.parse_args()
     print(f"VEDirect emulator eunning. Writing to serial port {args.port}")
     VEDirectEmulator(args.port, model=args.model).send_packets(n=args.n, samples_per_hour=args.sph)
     print("Done")
+
+
+if __name__ == '__main__':
+    main()

@@ -261,7 +261,7 @@ def print_data_callback(data):
     print(data)
 
 
-if __name__ == '__main__':
+def main():
     # provide a simple entry point that streams VEDirect data to stdout
     parser = argparse.ArgumentParser(description='Read VE.Direct device and stream data to stdout')
     parser.add_argument('port', help='Serial port to read from')
@@ -273,3 +273,7 @@ if __name__ == '__main__':
             print_data_callback(ve.read_data_single())
     else:
         ve.read_data_callback(print_data_callback)
+
+
+if __name__ == '__main__':
+    main()
