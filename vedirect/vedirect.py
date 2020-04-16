@@ -247,7 +247,6 @@ class VEDirect:
         byte = self.ser.read(1)
         if byte:
             # got a byte
-            print(byte)
             packet = self.input(byte)
             if packet is not None:
                 # made a full packet
