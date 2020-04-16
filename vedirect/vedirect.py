@@ -164,7 +164,7 @@ class VEDirect:
         self.key = b''
         self.value = b''
         self.bytes_sum = 0
-        self.state = self.WAIT_HEADER
+        self.state = self.WAIT_HEADER1
         self.dict = {}
 
     (HEX, WAIT_HEADER, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(5)
@@ -176,13 +176,15 @@ class VEDirect:
         if byte == self.hexmarker and self.state != self.IN_CHECKSUM:
             self.state = self.HEX
 
-        if self.state == self.WAIT_HEADER:
-            self.bytes_sum += ord(byte)
+        if self.state == self.WAIT_HEADER1:
             if byte == self.header1:
-                self.state = self.WAIT_HEADER
-            elif byte == self.header2:
+                self.bytes_sum += ord(byte)
+                self.state = self.WAIT_HEADER2
+            return None
+        if self.state == self.WAIT_HEADER2:
+            if byte == self.header2:
+                self.bytes_sum += ord(byte)
                 self.state = self.IN_KEY
-
             return None
         elif self.state == self.IN_KEY:
             self.bytes_sum += ord(byte)
@@ -245,6 +247,7 @@ class VEDirect:
         byte = self.ser.read(1)
         if byte:
             # got a byte
+            print(byte)
             packet = self.input(byte)
             if packet is not None:
                 # made a full packet
