@@ -251,6 +251,8 @@ class VEDirect:
             packet = self.input(byte)
             if packet is not None:
                 # made a full packet
+                print("packet:")
+                print(packet)
                 callbackfunction(packet)
         else:
             time.sleep(sleeptime_seconds)
