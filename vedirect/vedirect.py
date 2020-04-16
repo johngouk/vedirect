@@ -168,7 +168,7 @@ class VEDirect:
         self.state = self.WAIT_HEADER1
         self.dict = {}
 
-    (HEX, WAIT_HEADER, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(5)
+    (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
 
     def input(self, byte):
         """ Accepts a new byte and tries to finish constructing a packet.
@@ -200,7 +200,7 @@ class VEDirect:
         elif self.state == self.IN_VALUE:
             self.bytes_sum += ord(byte)
             if byte == self.header1:
-                self.state = self.WAIT_HEADER
+                self.state = self.WAIT_HEADER1
                 self.dict[str(self.key.decode(self.encoding))] = str(
                     self.value.decode(self.encoding))
                 self.key = b''
@@ -212,7 +212,7 @@ class VEDirect:
             self.bytes_sum += ord(byte)
             self.key = b''
             self.value = b''
-            self.state = self.WAIT_HEADER
+            self.state = self.WAIT_HEADER1
             if self.bytes_sum % 256 == 0:
                 self.bytes_sum = 0
                 return self.dict
@@ -222,7 +222,7 @@ class VEDirect:
         elif self.state == self.HEX:
             self.bytes_sum = 0
             if byte == self.header2:
-                self.state = self.WAIT_HEADER
+                self.state = self.WAIT_HEADER1
         else:
             raise AssertionError()
 
