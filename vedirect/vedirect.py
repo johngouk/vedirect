@@ -8,6 +8,7 @@
 
 import serial
 import argparse
+import time
 
 
 class VEDirect:
@@ -240,9 +241,9 @@ class VEDirect:
         """
         callbackfunction(self.read_data_single())
 
-    def read_data_callback_service(self, callbackfunction):
+    def read_data_callback_service(self, callbackfunction, sleeptime_seconds=0.01):
         """ Non-blocking service to try to get one byte and see if it completes a packet.  If it does, call the
-        callback function.
+        callback function.  If there
         """
         byte = self.ser.read(1)
         if byte:
@@ -251,12 +252,14 @@ class VEDirect:
             if packet is not None:
                 # made a full packet
                 callbackfunction(packet)
+        else:
+            time.sleep(sleeptime_seconds)
 
-    def read_data_callback(self, callbackfunction):
+    def read_data_callback(self, callbackfunction, sleeptime_seconds=0.01):
         """ Continue to wait for messages and call the callback function when we get them
         """
         while True:
-            self.read_data_callback_service(callbackfunction)
+            self.read_data_callback_service(callbackfunction, sleeptime_seconds=sleeptime_seconds)
 
 
 def print_data_callback(data):
