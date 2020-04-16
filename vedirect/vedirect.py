@@ -215,7 +215,9 @@ class VEDirect:
             self.state = self.WAIT_HEADER1
             if self.bytes_sum % 256 == 0:
                 self.bytes_sum = 0
-                return self.dict
+                dict_copy = self.dict.copy()
+                self.dict = {}  # clear the holder - ready for a new record
+                return dict_copy
             else:
                 print('Malformed packet')
                 self.bytes_sum = 0
