@@ -200,7 +200,7 @@ class VEDirect:
         elif self.state == self.IN_VALUE:
             self.bytes_sum += ord(byte)
             if byte == self.header1:
-                self.state = self.WAIT_HEADER1
+                self.state = self.WAIT_HEADER2
                 self.dict[str(self.key.decode(self.encoding))] = str(
                     self.value.decode(self.encoding))
                 self.key = b''
