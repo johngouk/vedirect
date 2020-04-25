@@ -28,8 +28,13 @@ class TestVEDirect(unittest.TestCase):
         # Wait a maximum of 5 seconds for the IoT device client to finish (it getting one packet)
         thread_slave.join(timeout=5)
 
-        self.assertDictEqual(self.data, VEDirectEmulator.data['MPPT'])
+        self.assertDictEqual(self.data, VEDirect.typecast(VEDirectEmulator.data['MPPT']))
 
+    def test_typecast(self):
+        """ Test with an MPPT emulator on a fake serial port """
+        original = {'V': '12800', 'LOAD': 'ON'}
+        new = VEDirect.typecast(original)
+        self.assertDictEqual(new, {'V': 12800.0, 'LOAD': 'ON'})
 
 if __name__ == '__main__':
     unittest.main()

@@ -129,8 +129,31 @@ class VEDirect:
         'MODE': '',
         'AC_OUT_V': '0.01 V',
         'AC_OUT_I': '0.1 A',
+        'AC_OUT_S': 'VA',
         'WARN': ''
     }
+
+    types = {'V': float, 'VS': float, 'VM': float, 'DM': float,
+             'VPV': float, 'PPV': float, 'I': float, 'IL': float,
+             'LOAD': str, 'T': float, 'P': float, 'CE': float,
+             'SOC': float, 'TTG': float, 'Alarm': str, 'Relay': str,
+             'AR': int, 'H1': float, 'H2': float, 'H3': float,
+             'H4': float, 'H5': float, 'H6': float, 'H7': float,
+             'H8': float, 'H9': float, 'H10': int, 'H11': int,
+             'H12': int, 'H13': int, 'H14': int, 'H15': float,
+             'H16': float, 'H17': float, 'H18': float, 'H19': float,
+             'H20': float, 'H21': float, 'H22': float, 'H23': float,
+             'ERR': int, 'CS': int, 'BMV': str, 'FW': str,
+             'PID': str, 'SER#': str, 'HSDS': int,
+             'MODE': int, 'AC_OUT_V': float, 'AC_OUT_I': float, 'AC_OUT_S': float,
+             'WARN': int, 'MPPT': int}
+
+    @staticmethod
+    def typecast(payload_dict):
+        new_dict = {}
+        for key, val in payload_dict.items():
+            new_dict[key] = VEDirect.types[key](val)
+        return new_dict
 
     cs = {
         '0': 'Off', '2': 'Fault', '3': 'Bulk',
@@ -149,7 +172,7 @@ class VEDirect:
         'W': ['W', 1, 0]
     }
 
-    def __init__(self, serialport, emulate=False):
+    def __init__(self, serialport):
         """ Constructor for a Victron VEDirect serial communication session.
 
         Params:
@@ -167,6 +190,7 @@ class VEDirect:
         self.bytes_sum = 0
         self.state = self.WAIT_HEADER1
         self.dict = {}
+        self.ser.flushInput()
 
     (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
 
@@ -228,15 +252,17 @@ class VEDirect:
         else:
             raise AssertionError()
 
-    def read_data_single(self):
-        """ Continue to wait until we get a single complete packet.
+    def read_data_single(self, flush=True):
+        """ Wait until we get a single complete packet, then return it
         """
+        if flush:
+            self.ser.flushInput()
         while True:
             byte = self.ser.read(1)
             if byte:
                 packet = self.input(byte)
                 if packet is not None:
-                    return packet
+                    return self.typecast(packet)
 
     def read_data_single_callback(self, callbackfunction):
         """ Continue to wait until we get a single complete packet, then call the callback function with the result.
@@ -255,7 +281,7 @@ class VEDirect:
                 # made a full packet
                 print("packet:")
                 print(packet)
-                callbackfunction(packet)
+                callbackfunction(self.typecast(packet))
         else:
             time.sleep(sleeptime_seconds)
 
@@ -279,7 +305,7 @@ def main():
     ve = VEDirect(args.port)
     if args.n:
         for i in range(0, args.n):
-            print_data_callback(ve.read_data_single())
+            print_data_callback(ve.read_data_single(flush=False))
     else:
         ve.read_data_callback(print_data_callback)
 

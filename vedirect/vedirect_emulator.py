@@ -34,7 +34,8 @@ class VEDirectEmulator:
                     'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350',
                     'ERR': '0', 'CS': '5', 'BMV': '702', 'FW': '1.19',
                     'PID': '0x204', 'SER#': 'HQ141112345', 'HSDS': '0',
-                    'MODE': '2', 'AC_OUT_V': '23000', 'AC_OUT_I': '50', 'WARN': '1'},
+                    'MODE': '2', 'AC_OUT_V': '23000', 'AC_OUT_I': '50', 'WARN': '1',
+                    'MPPT': '2'},
             'BMV_600': {'V': '12800', 'VS': '12800',
                         'I': '15000',
                         'CE': '13500',
@@ -63,7 +64,8 @@ class VEDirectEmulator:
                      'H19': '456',
                      'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350',
                      'ERR': '0', 'CS': '5', 'FW': '1.19',
-                     'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0'},
+                     'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0',
+                     'MPPT': '2'},
             'PHX_INVERTER': {'AR': '1',
                              'CS': '5', 'FW': '1.19',
                              'PID': '0xA201', 'SER#': 'HQ141112345',
@@ -134,7 +136,7 @@ def main():
     parser.add_argument('--model', help="one of ['ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']",
                         default=model_default, type=str)
     args = parser.parse_args()
-    print(f"VEDirect emulator eunning. Writing to serial port {args.port}")
+    print(f"VEDirect emulator running. Writing to serial port {args.port}")
     VEDirectEmulator(args.port, model=args.model).send_packets(n=args.n, samples_per_hour=args.sph)
     print("Done")
 
