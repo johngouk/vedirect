@@ -13,22 +13,29 @@ in three terminal windows on the same machine):
 First, create a pair of virtual serial ports.
 ```
 $ socat -d -d PTY,raw,echo=0,link=/tmp/vmodem0 PTY,raw,echo=0,link=/tmp/vmodem1
-2020/04/13 16:20:43 socat[84720] N PTY is /dev/ttys001
 2020/04/13 16:20:43 socat[84720] N PTY is /dev/ttys005
+2020/04/13 16:20:43 socat[84720] N PTY is /dev/ttys006
 2020/04/13 16:20:43 socat[84720] N starting data transfer loop with FDs [5,5] and [7,7]
 ```
 
-Next, run the emulator and set it to write to the first port:
+Run the VEDirect monitor with the default entry point to display packets to `stdio`.  In this case 
+we note from the above output that we need to listen on `/dev/ttys006`:
 
 ```
-% python vedirect/vedirect_emulator.py /dev/ttys001 --model="MPPT" --n=10 --sph=3600
-VEDirect emulator eunning. Writing to serial port /dev/ttys001
+% python3 vedirect/vedirect.py /dev/ttys006
 ```
 
-Run the VEDirect monitor with the default entry point to display packets to `stdio`:
+Next, run the emulator and set it to write to the first port (in this case `/dev/tty005`:
 
 ```
-% python3 vedirect/vedirect.py /dev/ttys005
+% python3 vedirect/vedirect_emulator.py /dev/ttys001 --model="MPPT" --n=10 --sph=3600
+VEDirect emulator eunning. Writing to serial port /dev/ttys005
+```
+
+In the first terminal window, we should begin to see the emulated data printed to `stdio`:
+
+```
+% python3 vedirect/vedirect.py /dev/ttys006
 Malformed packet
 {'CS': '5', 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0', 'V': '12800', 'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500', 'LOAD': 'ON', 'Relay': 'OFF', 'H19': '456', 'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350', 'ERR': '0'}
 {'CS': '5', 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0', 'V': '12800', 'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500', 'LOAD': 'ON', 'Relay': 'OFF', 'H19': '456', 'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350', 'ERR': '0'}

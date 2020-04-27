@@ -3,7 +3,7 @@
 #
 # Forked from karioja at https://github.com/karioja/vedirect
 #
-# 2019-01-16 JMF Modified to work with Python 3 and updated from
+# 2019-01-16 JMF Modified for Python 3 and updated protocol from
 # https://www.sv-zanshin.com/r/manuals/victron-ve-direct-protocol.pdf
 
 import serial
@@ -130,7 +130,8 @@ class VEDirect:
         'AC_OUT_V': '0.01 V',
         'AC_OUT_I': '0.1 A',
         'AC_OUT_S': 'VA',
-        'WARN': ''
+        'WARN': '',
+        'MPPT': ''
     }
 
     types = {'V': float, 'VS': float, 'VM': float, 'DM': float,
@@ -172,15 +173,16 @@ class VEDirect:
         'W': ['W', 1, 0]
     }
 
-    def __init__(self, serialport):
+    def __init__(self, serialport, timeout=60):
         """ Constructor for a Victron VEDirect serial communication session.
 
         Params:
             serialport (str): The name of the serial port to open
             emulate (bool): Whether or not to emulate a VEDirect device
+            timeout (float): Read timeout value (seconds)
         """
         self.serialport = serialport
-        self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=0)
+        self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
         self.header1 = b'\r'
         self.header2 = b'\n'
         self.hexmarker = b':'
@@ -258,8 +260,9 @@ class VEDirect:
         if flush:
             self.ser.flushInput()
         while True:
-            byte = self.ser.read(1)
+            byte = self.ser.read()
             if byte:
+                # got a byte (didn't time out)
                 packet = self.input(byte)
                 if packet is not None:
                     return self.typecast(packet)
@@ -269,27 +272,20 @@ class VEDirect:
         """
         callbackfunction(self.read_data_single())
 
-    def read_data_callback_service(self, callbackfunction, sleeptime_seconds=0.01):
+    def read_data_callback(self, callbackfunction):
         """ Non-blocking service to try to get one byte and see if it completes a packet.  If it does, call the
         callback function.  If there
         """
-        byte = self.ser.read(1)
-        if byte:
-            # got a byte
-            packet = self.input(byte)
-            if packet is not None:
-                # made a full packet
-                print("packet:")
-                print(packet)
-                callbackfunction(self.typecast(packet))
-        else:
-            time.sleep(sleeptime_seconds)
-
-    def read_data_callback(self, callbackfunction, sleeptime_seconds=0.01):
-        """ Continue to wait for messages and call the callback function when we get them
-        """
         while True:
-            self.read_data_callback_service(callbackfunction, sleeptime_seconds=sleeptime_seconds)
+            byte = self.ser.read()
+            if byte:
+                # got a byte (didn't time out)
+                packet = self.input(byte)
+                if packet is not None:
+                    # made a full packet
+                    print("packet:")
+                    print(packet)
+                    callbackfunction(self.typecast(packet))
 
 
 def print_data_callback(data):
@@ -301,8 +297,10 @@ def main():
     parser = argparse.ArgumentParser(description='Read VE.Direct device and stream data to stdout')
     parser.add_argument('port', help='Serial port to read from')
     parser.add_argument('--n', help='number of packets to read (or default=0 for infinite)', default=0, type=int)
+    parser.add_argument('--timeout', help='Serial port read timeout, seconds', type=int, default='60')
+
     args = parser.parse_args()
-    ve = VEDirect(args.port)
+    ve = VEDirect(args.port, args.timeout)
     if args.n:
         for i in range(0, args.n):
             print_data_callback(ve.read_data_single(flush=False))
