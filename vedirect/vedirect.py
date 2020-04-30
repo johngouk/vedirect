@@ -11,6 +11,10 @@ import argparse
 import time
 
 
+def int_base_guess(string_val):
+    return int(string_val, 0)
+
+
 class VEDirect:
     encoding = 'utf-8'
 
@@ -150,10 +154,6 @@ class VEDirect:
              'PID': str, 'SER#': str, 'HSDS': int_base_guess,
              'MODE': int_base_guess, 'AC_OUT_V': float, 'AC_OUT_I': float, 'AC_OUT_S': float,
              'WARN': int_base_guess, 'MPPT': int_base_guess}
-
-    @staticmethod
-    def int_base_guess(string_val):
-        return int(string_val, 0)
 
     @staticmethod
     def typecast(payload_dict):
