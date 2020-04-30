@@ -98,6 +98,7 @@ class VEDirect:
         'Alarm': '',
         'Relay': '',
         'AR': '',
+        'OR': '',
         'H1': 'mAh',
         'H2': 'mAh',
         'H3': 'mAh',
@@ -138,16 +139,21 @@ class VEDirect:
              'VPV': float, 'PPV': float, 'I': float, 'IL': float,
              'LOAD': str, 'T': float, 'P': float, 'CE': float,
              'SOC': float, 'TTG': float, 'Alarm': str, 'Relay': str,
-             'AR': int, 'H1': float, 'H2': float, 'H3': float,
+             'AR': int_base_guess, 'OR': int_base_guess, 
+             'H1': float, 'H2': float, 'H3': float,
              'H4': float, 'H5': float, 'H6': float, 'H7': float,
-             'H8': float, 'H9': float, 'H10': int, 'H11': int,
-             'H12': int, 'H13': int, 'H14': int, 'H15': float,
+             'H8': float, 'H9': float, 'H10': int_base_guess, 'H11': int_base_guess,
+             'H12': int_base_guess, 'H13': int_base_guess, 'H14': int_base_guess, 'H15': float,
              'H16': float, 'H17': float, 'H18': float, 'H19': float,
              'H20': float, 'H21': float, 'H22': float, 'H23': float,
-             'ERR': int, 'CS': int, 'BMV': str, 'FW': str,
-             'PID': str, 'SER#': str, 'HSDS': int,
-             'MODE': int, 'AC_OUT_V': float, 'AC_OUT_I': float, 'AC_OUT_S': float,
-             'WARN': int, 'MPPT': int}
+             'ERR': int_base_guess, 'CS': int_base_guess, 'BMV': str, 'FW': str,
+             'PID': str, 'SER#': str, 'HSDS': int_base_guess,
+             'MODE': int_base_guess, 'AC_OUT_V': float, 'AC_OUT_I': float, 'AC_OUT_S': float,
+             'WARN': int_base_guess, 'MPPT': int_base_guess}
+
+    @staticmethod
+    def int_base_guess(string_val):
+        return int(string_val, 0)
 
     @staticmethod
     def typecast(payload_dict):
@@ -265,6 +271,7 @@ class VEDirect:
                 # got a byte (didn't time out)
                 packet = self.input(byte)
                 if packet is not None:
+                    print(packet) 
                     return self.typecast(packet)
 
     def read_data_single_callback(self, callbackfunction):
