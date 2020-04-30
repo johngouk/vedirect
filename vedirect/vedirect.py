@@ -271,7 +271,6 @@ class VEDirect:
                 # got a byte (didn't time out)
                 packet = self.input(byte)
                 if packet is not None:
-                    print(packet) 
                     return self.typecast(packet)
 
     def read_data_single_callback(self, callbackfunction):
