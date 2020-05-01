@@ -251,7 +251,7 @@ class VEDirect:
                 self.dict = {}  # clear the holder - ready for a new record
                 return dict_copy
             else:
-                print('Malformed packet')
+                # print('Malformed packet')
                 self.bytes_sum = 0
         elif self.state == self.HEX:
             self.bytes_sum = 0
@@ -289,8 +289,8 @@ class VEDirect:
                 packet = self.input(byte)
                 if packet is not None:
                     # made a full packet
-                    print("packet:")
-                    print(packet)
+                    # print("packet:")
+                    # print(packet)
                     callbackfunction(self.typecast(packet))
 
 
