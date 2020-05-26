@@ -193,20 +193,20 @@ class VEDirect:
         'MPPT': ''
     }
 
-    types = {'V': float, 'VS': float, 'VM': float, 'DM': float,
-             'VPV': float, 'PPV': float, 'I': float, 'IL': float,
-             'LOAD': str, 'T': float, 'P': float, 'CE': float,
-             'SOC': float, 'TTG': float, 'Alarm': str, 'Relay': str,
+    types = {'V': int, 'VS': int, 'VM': int, 'DM': int,
+             'VPV': int, 'PPV': int, 'I': int, 'IL': int,
+             'LOAD': str, 'T': int, 'P': int, 'CE': int,
+             'SOC': int, 'TTG': int, 'Alarm': str, 'Relay': str,
              'AR': int_base_guess, 'OR': int_base_guess,
-             'H1': float, 'H2': float, 'H3': float,
-             'H4': float, 'H5': float, 'H6': float, 'H7': float,
-             'H8': float, 'H9': float, 'H10': int_base_guess, 'H11': int_base_guess,
-             'H12': int_base_guess, 'H13': int_base_guess, 'H14': int_base_guess, 'H15': float,
-             'H16': float, 'H17': float, 'H18': float, 'H19': float,
-             'H20': float, 'H21': float, 'H22': float, 'H23': float,
+             'H1': int, 'H2': int, 'H3': int,
+             'H4': int, 'H5': int, 'H6': int, 'H7': int,
+             'H8': int, 'H9': int, 'H10': int_base_guess, 'H11': int_base_guess,
+             'H12': int_base_guess, 'H13': int_base_guess, 'H14': int_base_guess, 'H15': int,
+             'H16': int, 'H17': int, 'H18': int, 'H19': int,
+             'H20': int, 'H21': int, 'H22': int, 'H23': int,
              'ERR': int_base_guess, 'CS': int_base_guess, 'BMV': str, 'FW': str,
              'PID': str, 'SER#': str, 'HSDS': int_base_guess,
-             'MODE': int_base_guess, 'AC_OUT_V': float, 'AC_OUT_I': float, 'AC_OUT_S': float,
+             'MODE': int_base_guess, 'AC_OUT_V': int, 'AC_OUT_I': int, 'AC_OUT_S': int,
              'WARN': int_base_guess, 'MPPT': int_base_guess}
 
     @staticmethod
@@ -358,12 +358,13 @@ def main():
     if args.emulate:
         if args.n:
             for i in range(0, args.n):
-                time.sleep(1.0)
-                print(json.dumps(VEDirectDeviceEmulator.data[args.emulate.upper()]))
+                print(json.dumps(VEDirect.typecast(VEDirectDeviceEmulator.data[args.emulate.upper()])))
+                if i < args.n-1:
+                    time.sleep(1.0)
         else:
             while True:
+                print(json.dumps(VEDirect.typecast(VEDirectDeviceEmulator.data[args.emulate.upper()])))
                 time.sleep(1.0)
-                print(json.dumps(VEDirectDeviceEmulator.data[args.emulate.upper()]))
     else:
         if not args.port:
             print("Must specify a port to listen.")
