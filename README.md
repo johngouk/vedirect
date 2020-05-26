@@ -33,7 +33,7 @@ we note from the above output that we need to listen on `/dev/ttys006`:
 Next, run the emulator and set it to write to the first port (in this case `/dev/tty005`:
 
 ```
-% vedirect_emulator --port=/dev/ttys001 --model="MPPT" --n=10 --sph=3600
+% vedirect_device_emulator --port=/dev/ttys005 --model="MPPT" --n=10 --sph=3600
 VEDirect emulator eunning. Writing to serial port /dev/ttys005
 ```
 
@@ -48,7 +48,7 @@ Malformed packet
 ...
 ```
 
-You can also emulate vedirect output without using the device emulator:
+You can also emulate vedirect output without using `vedirect_device_emulator`:
 ```
 vedirect --emulate=mppt --n=2
 {"V": "12800", "VPV": "3350", "PPV": "130", "I": "15000", "IL": "1500", "LOAD": "ON", "Relay": "OFF", "H19": "456", "H20": "45", "H21": "300", "H22": "45", "H23": "350", "ERR": "0", "CS": "5", "FW": "1.19", "PID": "0xA042", "SER#": "HQ141112345", "HSDS": "0", "MPPT": "2"}
