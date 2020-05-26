@@ -1,2 +1,3 @@
 from .vedirect import VEDirect
-from .vedirect_emulator import VEDirectEmulator
+from .vedirect_device_emulator import VEDirectDeviceEmulator
+import vedirect.vedirect_types

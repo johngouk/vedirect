@@ -9,6 +9,9 @@
 import serial
 import argparse
 import time
+from .vedirect_device_emulator import VEDirectDeviceEmulator
+import json
+import sys
 
 
 def int_base_guess(string_val):
@@ -53,9 +56,55 @@ class VEDirect:
     def conv_mode(code):
         return VEDirect.device_state_map[int(code)]
 
+    cs = {
+        '0': 'Off', '2': 'Fault', '3': 'Bulk',
+        '4': 'Abs', '5': 'Float'
+    }
+
+    offReasonDecode = {
+        0x001: 'No input power',
+        0x002: 'Switched off (power switch)',
+        0x004: 'Switched off (device mode register)',
+        0x008: 'Remote input',
+        0x010: 'Protection active',
+        0x020: 'Paygo',
+        0x040: 'BMS',
+        0x080: 'Engine shutdown detection',
+        0x100: 'Analyzing input voltage'
+    }
+
+    capBleDecode = {
+        0x001: 'BLE supports switching off',
+        0x002: 'BLE switching off is permanent'
+    }
+
+    alarmReasonDecode = {
+        'Low Voltage': 1 << 0,  # 1  0b00000000000001
+        'High Voltage': 1 << 1,  # 2  0b00000000000010
+        'Low SOC': 1 << 2,  # 4  0b00000000000100
+        'Low Starter Voltage': 1 << 3,  # 8  0b00000000001000
+        'High Starter Voltage': 1 << 4,  # 16  0b00000000010000
+        'Low Temperature': 1 << 5,  # 32  0b00000000100000
+        'High Temperature': 1 << 6,  # 64  0b00000001000000
+        'Mid Voltage': 1 << 7,  # 128  0b00000010000000
+        'Overload': 1 << 8,  # 256  0b00000100000000
+        'DC-ripple': 1 << 9,  # 512  0b00001000000000
+        'Low V AC out': 1 << 10,  # 1024  0b00010000000000
+        'High C AC out': 1 << 11,  # 2048  0b00100000000000
+        'Short Circuit': 1 << 12,  # 4096  0b01000000000000
+        'BMS Lockout': 1 << 13  # 8192  0b10000000000000
+    }
+
+    @staticmethod
+    def lookup(key_int, lookup_list):
+        if key_int in lookup_list:
+            return lookup_list[key_int]
+        else:
+            return ''
+
     values = {
         'LOAD': {'key': 'load'},
-        'H19': {'key': 'yieldTotal', 'mx': 0.01},
+        'H19': {'key': 'yieldTotal', 'mx': .01},
         'VPV': {'key': 'panelVoltage', 'mx': 0.001},
         'ERR': {'key': 'error', 'f': conv_error},
         'FW': {'key': 'firmwareVersion', 'mx': 0.01},
@@ -86,12 +135,16 @@ class VEDirect:
 
     units = {
         'V': 'mV',
+        'V2': 'mV',
+        'V3': 'mV',
         'VS': 'mV',
         'VM': 'mV',
         'DM': '%',
         'VPV': 'mV',
         'PPV': 'W',
         'I': 'mA',
+        'I2': 'mA',
+        'I3': 'mA',
         'IL': 'mA',
         'LOAD': '',
         'T': '°C',
@@ -128,6 +181,7 @@ class VEDirect:
         'CS': '*',
         'BMV': '',
         'FW': '',
+        'FWE': '',
         'PID': '',
         'SER#': '',
         'HSDS': '',
@@ -143,7 +197,7 @@ class VEDirect:
              'VPV': float, 'PPV': float, 'I': float, 'IL': float,
              'LOAD': str, 'T': float, 'P': float, 'CE': float,
              'SOC': float, 'TTG': float, 'Alarm': str, 'Relay': str,
-             'AR': int_base_guess, 'OR': int_base_guess, 
+             'AR': int_base_guess, 'OR': int_base_guess,
              'H1': float, 'H2': float, 'H3': float,
              'H4': float, 'H5': float, 'H6': float, 'H7': float,
              'H8': float, 'H9': float, 'H10': int_base_guess, 'H11': int_base_guess,
@@ -162,11 +216,6 @@ class VEDirect:
             new_dict[key] = VEDirect.types[key](val)
         return new_dict
 
-    cs = {
-        '0': 'Off', '2': 'Fault', '3': 'Bulk',
-        '4': 'Abs', '5': 'Float'
-    }
-
     fmt = {
         '%': ['%', 10, 1],
         '°C': ['°C', 1, 0],
@@ -184,7 +233,6 @@ class VEDirect:
 
         Params:
             serialport (str): The name of the serial port to open
-            emulate (bool): Whether or not to emulate a VEDirect device
             timeout (float): Read timeout value (seconds)
         """
         self.serialport = serialport
@@ -299,19 +347,33 @@ def print_data_callback(data):
 
 
 def main():
-    # provide a simple entry point that streams VEDirect data to stdout
+    # provide a simple entry point that streams data from a VEDirect device to stdout
     parser = argparse.ArgumentParser(description='Read VE.Direct device and stream data to stdout')
-    parser.add_argument('port', help='Serial port to read from')
+    parser.add_argument('--port', help='Serial port to read from', type=str, default='')
     parser.add_argument('--n', help='number of packets to read (or default=0 for infinite)', default=0, type=int)
     parser.add_argument('--timeout', help='Serial port read timeout, seconds', type=int, default='60')
-
+    parser.add_argument('--emulate', help='emulate one of [ALL, BMV_600, BMV_700, MPPT, PHX_INVERTER]',
+                        default='', type=str)
     args = parser.parse_args()
-    ve = VEDirect(args.port, args.timeout)
-    if args.n:
-        for i in range(0, args.n):
-            print_data_callback(ve.read_data_single(flush=False))
+    if args.emulate:
+        if args.n:
+            for i in range(0, args.n):
+                time.sleep(1.0)
+                print(json.dumps(VEDirectDeviceEmulator.data[args.emulate.upper()]))
+        else:
+            while True:
+                time.sleep(1.0)
+                print(json.dumps(VEDirectDeviceEmulator.data[args.emulate.upper()]))
     else:
-        ve.read_data_callback(print_data_callback)
+        if not args.port:
+            print("Must specify a port to listen.")
+            sys.exit(1)
+        ve = VEDirect(args.port, args.timeout)
+        if args.n:
+            for i in range(0, args.n):
+                print_data_callback(ve.read_data_single(flush=False))
+        else:
+            ve.read_data_callback(print_data_callback)
 
 
 if __name__ == '__main__':

@@ -20,13 +20,13 @@ import os, serial, time, argparse
 model_default = 'MPPT'
 
 
-class VEDirectEmulator:
+class VEDirectDeviceEmulator:
     models = ['ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']
-    data = {'ALL': {'V': '12800', 'VS': '12800', 'VM': '1280', 'DM': '120',
+    data = {'ALL': {'V': '12800', 'V2': '12802', 'V3': '12803', 'VS': '12200', 'VM': '1280', 'DM': '120',
                     'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500',
                     'LOAD': 'ON', 'T': '25', 'P': '130', 'CE': '13500',
                     'SOC': '876', 'TTG': '45', 'Alarm': 'OFF', 'Relay': 'OFF',
-                    'AR': '1', 'OR': '0x00000000',
+                    'AR': '1000001', 'OR': '0x00000000',
                     'H1': '55000', 'H2': '15000', 'H3': '13000',
                     'H4': '230', 'H5': '12', 'H6': '234000', 'H7': '11000',
                     'H8': '14800', 'H9': '7200', 'H10': '45', 'H11': '5',
@@ -83,9 +83,13 @@ class VEDirectEmulator:
         self.serialport = serialport
         self.model = model
         if isinstance(serialport, str):
-            self.ser = serial.Serial(serialport, 19200, timeout=0)
-            self.writer = self.ser.write
+            if not serialport:
+                self.writer = print
+            else:
+                self.ser = serial.Serial(serialport, 19200, timeout=0)
+                self.writer = self.ser.write
         else:
+            # serialport must be file descriptor
             self.writer = self.writetofd
 
     def writetofd(self, s):
@@ -113,7 +117,7 @@ class VEDirectEmulator:
         # print(f'Converting and sending: {self.data[self.model]}')
         packet = self.convert(self.data[self.model])
         self.writer(bytes(packet))
-        print(f'Sent: {packet}')
+        # print(f'Sent: {packet}')
         # self.ser.write(bytes(packet))
 
     def send_packets(self, n=0, samples_per_hour=720.0):
@@ -131,14 +135,18 @@ class VEDirectEmulator:
 
 def main():
     parser = argparse.ArgumentParser(description='A simple VE.Direct emulator')
-    parser.add_argument('port', help='Serial port to write')
+    parser.add_argument('--port', help='Serial port to write', type=str, default='')
     parser.add_argument('--n', help='number of packets to send (or default=0 for infinite)', default=0, type=int)
     parser.add_argument('--sph', default=60, help='samples per hour (default=False)', type=float)
     parser.add_argument('--model', help="one of ['ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']",
                         default=model_default, type=str)
     args = parser.parse_args()
-    print(f"VEDirect emulator running. Writing to serial port {args.port}")
-    VEDirectEmulator(args.port, model=args.model).send_packets(n=args.n, samples_per_hour=args.sph)
+    if args.port:
+        destination = f"serial port {args.port}"
+    else:
+        destination = f"<stdout>"
+    print(f"VEDirect emulator running. Writing to {destination}")
+    VEDirectDeviceEmulator(args.port, model=args.model).send_packets(n=args.n, samples_per_hour=args.sph)
     print("Done")
 
 

@@ -4,6 +4,11 @@ This is a Python library for decoding the Victron Energy VE.Direct text protocol
 charge controllers, battery monitors, and inverters.  
 This is a forked version of a package originally created by Janne Kario (https://github.com/karioja/vedirect).
 
+## Installation
+
+```
+python3 -m pip install git+https://github.com/jmfife/vedirect"
+```
 ## Quick Simulation
 
 A simple command line test with a built-in emulator can be performend on any platform without
@@ -22,20 +27,20 @@ Run the VEDirect monitor with the default entry point to display packets to `std
 we note from the above output that we need to listen on `/dev/ttys006`:
 
 ```
-% python3 vedirect/vedirect.py /dev/ttys006
+% vedirect --port=/dev/ttys006
 ```
 
 Next, run the emulator and set it to write to the first port (in this case `/dev/tty005`:
 
 ```
-% python3 vedirect/vedirect_emulator.py /dev/ttys001 --model="MPPT" --n=10 --sph=3600
+% vedirect_emulator --port=/dev/ttys001 --model="MPPT" --n=10 --sph=3600
 VEDirect emulator eunning. Writing to serial port /dev/ttys005
 ```
 
 In the first terminal window, we should begin to see the emulated data printed to `stdio`:
 
 ```
-% python3 vedirect/vedirect.py /dev/ttys006
+% vedirect --port=/dev/ttys006
 Malformed packet
 {'CS': '5', 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0', 'V': '12800', 'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500', 'LOAD': 'ON', 'Relay': 'OFF', 'H19': '456', 'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350', 'ERR': '0'}
 {'CS': '5', 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': '0', 'V': '12800', 'VPV': '3350', 'PPV': '130', 'I': '15000', 'IL': '1500', 'LOAD': 'ON', 'Relay': 'OFF', 'H19': '456', 'H20': '45', 'H21': '300', 'H22': '45', 'H23': '350', 'ERR': '0'}
@@ -43,6 +48,12 @@ Malformed packet
 ...
 ```
 
+You can also emulate vedirect output without using the device emulator:
+```
+vedirect --emulate=mppt --n=2
+{"V": "12800", "VPV": "3350", "PPV": "130", "I": "15000", "IL": "1500", "LOAD": "ON", "Relay": "OFF", "H19": "456", "H20": "45", "H21": "300", "H22": "45", "H23": "350", "ERR": "0", "CS": "5", "FW": "1.19", "PID": "0xA042", "SER#": "HQ141112345", "HSDS": "0", "MPPT": "2"}
+{"V": "12800", "VPV": "3350", "PPV": "130", "I": "15000", "IL": "1500", "LOAD": "ON", "Relay": "OFF", "H19": "456", "H20": "45", "H21": "300", "H22": "45", "H23": "350", "ERR": "0", "CS": "5", "FW": "1.19", "PID": "0xA042", "SER#": "HQ141112345", "HSDS": "0", "MPPT": "2"}
+```
 
 ## Original README.md
 

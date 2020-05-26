@@ -11,4 +11,10 @@ setup(name='vedirect-jmfife',
       install_requires=[
           'pyserial',
       ],
-      zip_safe=False)
+      zip_safe=False,
+      entry_points = {
+            'console_scripts': ['vedirect=vedirect.vedirect:main',
+                                'vedirect_device_emulator=vedirect.vedirect_device_emulator:main'],
+      }
+      )
+
