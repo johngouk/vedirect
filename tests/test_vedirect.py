@@ -3,9 +3,6 @@ import threading
 from vedirect.vedirect_device_emulator import VEDirectDeviceEmulator
 from vedirect.vedirect import VEDirect
 import unittest
-import json
-import fieldday
-from vedirect import vedirect_types
 
 
 class TestVEDirect(unittest.TestCase):
@@ -38,13 +35,6 @@ class TestVEDirect(unittest.TestCase):
         original = {'V': '12800', 'LOAD': 'ON'}
         new = VEDirect.typecast(original)
         self.assertDictEqual(new, {'V': 12800.0, 'LOAD': 'ON'})
-
-    def test_loaddata_mppt(self):
-        """ Test loading data into a useful data structure """
-        vedirect_raw_str = VEDirectDeviceEmulator.data['MPPT']
-        field_dict = fieldday.FieldSet(vedirect_raw_str, rename_dict=vedirect_types.keyName,
-                                       field_types=vedirect_types.fieldTypes)
-        self.assertEqual(12800, field_dict['batteryVoltage'].value)
 
 
 if __name__ == '__main__':
