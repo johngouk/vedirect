@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='vedirect-jmfife',
-      version='0.2',
+      version='0.3',
       description='Victron VE.Direct decoder for Python, forked from karioja',
       url='https://github.com/jmfife/vedirect',
       author='Mike Fife',
@@ -12,9 +12,11 @@ setup(name='vedirect-jmfife',
           'pyserial',
       ],
       zip_safe=False,
-      entry_points = {
-            'console_scripts': ['vedirect=vedirect.vedirect:main',
-                                'vedirect_device_emulator=vedirect.vedirect_device_emulator:main'],
+      entry_points={
+          'console_scripts': ['vedirect=vedirect.vedirect:main',
+                              'vedirect_device_emulator=vedirect.vedirect_device_emulator:main'],
+      },
+      extras_requires={
+          "examples": ["paho"],     # to run example MQTT publisher
       }
       )
-
