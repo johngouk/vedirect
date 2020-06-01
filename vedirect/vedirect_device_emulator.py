@@ -114,23 +114,18 @@ class VEDirectDeviceEmulator:
         return result
 
     def send_record(self):
-        # print(f'Converting and sending: {self.data[self.model]}')
         record = self.convert(self.data[self.model])
         self.writer(bytes(record))
-        # print(f'Sent: {record}')
-        # self.ser.write(bytes(record))
 
-    def send_records(self, n=0, samples_per_hour=720.0):
+
+    def send_records(self, n=-1, samples_per_hour=720.0):
         """ Send n records """
         sleep_seconds = 3600.0/float(samples_per_hour)
-        if n:
-            for i in range(0, n):
-                self.send_record()
-                time.sleep(sleep_seconds)
-        else:
-            while True:
-                self.send_record()
-                time.sleep(sleep_seconds)
+        while n != 0:
+            self.send_record()
+            time.sleep(sleep_seconds)
+            if n != 0:
+                n = n - 1
 
 
 def main():
