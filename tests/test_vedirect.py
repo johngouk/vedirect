@@ -36,6 +36,12 @@ class TestVEDirect(unittest.TestCase):
         new = VEDirect.typecast(original)
         self.assertDictEqual(new, {'V': 12800.0, 'LOAD': 'ON'})
 
+    def test_emulate(self):
+        """ Test with an MPPT emulator on a fake serial port """
+        v = VEDirect(emulate='MPPT')
+        onepacket=v.read_data_single()
+        self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), onepacket)
+     
 
 if __name__ == '__main__':
     unittest.main()

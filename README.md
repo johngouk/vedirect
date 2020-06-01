@@ -8,12 +8,12 @@ This is a forked version of a package originally created by Janne Kario (https:/
 
 To install directly from GitHub:
 ```
-python3 -m pip install git+https://github.com/jmfife/vedirect[examples]
+python3 -m pip install "git+https://github.com/jmfife/vedirect[examples]"
 ```
 
 If you have cloned or forked the repo already to your local directory and want to use it in live (editable mode):
 ```
-python3 -m pip install -e .[examples]
+python3 -m pip install -e ".[examples]"
 ```
 Note in both cases above, the dependencies needed to run the examples are also installed.
 

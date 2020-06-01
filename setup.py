@@ -16,7 +16,7 @@ setup(name='vedirect-jmfife',
           'console_scripts': ['vedirect=vedirect.vedirect:main',
                               'vedirect_device_emulator=vedirect.vedirect_device_emulator:main'],
       },
-      extras_requires={
-          "examples": ["paho"],     # to run example MQTT publisher
+      extras_require={
+          "examples": ["paho-mqtt"],     # to run example MQTT publisher
       }
       )

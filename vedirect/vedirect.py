@@ -228,29 +228,33 @@ class VEDirect:
         'W': ['W', 1, 0]
     }
 
-    def __init__(self, serialport, timeout=60):
+    def __init__(self, serialport='', timeout=60, emulate=''):
         """ Constructor for a Victron VEDirect serial communication session.
 
         Params:
             serialport (str): The name of the serial port to open
             timeout (float): Read timeout value (seconds)
+            emulate (str): One of ['', 'ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']
         """
-        self.serialport = serialport
-        self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
-        self.header1 = b'\r'
-        self.header2 = b'\n'
-        self.hexmarker = b':'
-        self.delimiter = b'\t'
-        self.key = b''
-        self.value = b''
-        self.bytes_sum = 0
-        self.state = self.WAIT_HEADER1
-        self.dict = {}
-        self.ser.flushInput()
+        self.emulate = emulate
+        if not emulate:
+            self.serialport = serialport
+            self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
+            self.header1 = b'\r'
+            self.header2 = b'\n'
+            self.hexmarker = b':'
+            self.delimiter = b'\t'
+            self.key = b''
+            self.value = b''
+            self.bytes_sum = 0
+            self.state = self.WAIT_HEADER1
+            self.dict = {}
+            self.ser.flushInput()
+
 
     (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
 
-    def input(self, byte):
+    def _input(self, byte):
         """ Accepts a new byte and tries to finish constructing a packet.
         When a packet is complete, it will be returned as a dictionary
         """
@@ -311,35 +315,43 @@ class VEDirect:
     def read_data_single(self, flush=True):
         """ Wait until we get a single complete packet, then return it
         """
-        if flush:
-            self.ser.flushInput()
-        while True:
-            byte = self.ser.read()
-            if byte:
-                # got a byte (didn't time out)
-                packet = self.input(byte)
-                if packet is not None:
-                    return self.typecast(packet)
+        if self.emulate:
+            time.sleep(1.0)
+            return self.typecast(VEDirectDeviceEmulator.data[self.emulate])
+        else:
+            if flush:
+                self.ser.flushInput()
+            while True:
+                byte = self.ser.read()
+                if byte:
+                    # got a byte (didn't time out)
+                    packet = self._input(byte)
+                    if packet is not None:
+                        return self.typecast(packet)
 
-    def read_data_single_callback(self, callbackfunction):
+    def read_data_single_callback(self, callbackfunction, **kwargs):
         """ Continue to wait until we get a single complete packet, then call the callback function with the result.
         """
-        callbackfunction(self.read_data_single())
+        callbackfunction(self.read_data_single(), **kwargs)
 
-    def read_data_callback(self, callbackfunction):
+    def read_data_callback(self, callbackfunction, **kwargs):
         """ Non-blocking service to try to get one byte and see if it completes a packet.  If it does, call the
-        callback function.  If there
+        callback function.
         """
         while True:
-            byte = self.ser.read()
-            if byte:
-                # got a byte (didn't time out)
-                packet = self.input(byte)
-                if packet is not None:
-                    # made a full packet
-                    # print("packet:")
-                    # print(packet)
-                    callbackfunction(self.typecast(packet))
+            if self.emulate:
+                time.sleep(1.0)
+                return self.typecast(VEDirectDeviceEmulator.data[self.emulate])
+            else:
+                byte = self.ser.read()
+                if byte:
+                    # got a byte (didn't time out)
+                    packet = self._input(byte)
+                    if packet is not None:
+                        # made a full packet
+                        # print("packet:")
+                        # print(packet)
+                        callbackfunction(self.typecast(packet), **kwargs)
 
 
 def print_data_callback(data):
