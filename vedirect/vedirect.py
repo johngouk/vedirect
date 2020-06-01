@@ -251,7 +251,6 @@ class VEDirect:
             self.dict = {}
             self.ser.flushInput()
 
-
     (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
 
     def _input(self, byte):
@@ -334,24 +333,25 @@ class VEDirect:
         """
         callbackfunction(self.read_data_single(), **kwargs)
 
-    def read_data_callback(self, callbackfunction, **kwargs):
-        """ Non-blocking service to try to get one byte and see if it completes a packet.  If it does, call the
-        callback function.
+    def read_data_callback(self, callbackfunction, n=-1, **kwargs):
+        """ Non-blocking service to continuously read packets, and when one is formed, call the
+        callback function with the packet as the first argument.
         """
-        while True:
+        while n != 0:
             if self.emulate:
                 time.sleep(1.0)
-                return self.typecast(VEDirectDeviceEmulator.data[self.emulate])
+                callbackfunction(self.typecast(VEDirectDeviceEmulator.data[self.emulate]), **kwargs)
+                if n > 0:
+                    n = n - 1
             else:
                 byte = self.ser.read()
                 if byte:
                     # got a byte (didn't time out)
                     packet = self._input(byte)
                     if packet is not None:
-                        # made a full packet
-                        # print("packet:")
-                        # print(packet)
                         callbackfunction(self.typecast(packet), **kwargs)
+                        if n > 0:
+                            n = n - 1
 
 
 def print_data_callback(data):
@@ -367,26 +367,11 @@ def main():
     parser.add_argument('--emulate', help='emulate one of [ALL, BMV_600, BMV_700, MPPT, PHX_INVERTER]',
                         default='', type=str)
     args = parser.parse_args()
-    if args.emulate:
-        if args.n:
-            for i in range(0, args.n):
-                print(json.dumps(VEDirect.typecast(VEDirectDeviceEmulator.data[args.emulate.upper()])))
-                if i < args.n-1:
-                    time.sleep(1.0)
-        else:
-            while True:
-                print(json.dumps(VEDirect.typecast(VEDirectDeviceEmulator.data[args.emulate.upper()])))
-                time.sleep(1.0)
-    else:
-        if not args.port:
-            print("Must specify a port to listen.")
-            sys.exit(1)
-        ve = VEDirect(args.port, args.timeout)
-        if args.n:
-            for i in range(0, args.n):
-                print_data_callback(ve.read_data_single(flush=False))
-        else:
-            ve.read_data_callback(print_data_callback)
+    if not args.port and not args.emulate:
+        print("Must specify a port to listen.")
+        sys.exit(1)
+    ve = VEDirect(args.port, args.timeout, args.emulate.upper())
+    ve.read_data_callback(print_data_callback, args.n)
 
 
 if __name__ == '__main__':
