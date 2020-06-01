@@ -254,8 +254,8 @@ class VEDirect:
     (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
 
     def _input(self, byte):
-        """ Accepts a new byte and tries to finish constructing a packet.
-        When a packet is complete, it will be returned as a dictionary
+        """ Accepts a new byte and tries to finish constructing a record.
+        When a record is complete, it will be returned as a dictionary
         """
         if byte == self.hexmarker and self.state != self.IN_CHECKSUM:
             self.state = self.HEX
@@ -302,7 +302,7 @@ class VEDirect:
                 self.dict = {}  # clear the holder - ready for a new record
                 return dict_copy
             else:
-                # print('Malformed packet')
+                # print('Malformed record')
                 self.bytes_sum = 0
         elif self.state == self.HEX:
             self.bytes_sum = 0
@@ -312,7 +312,7 @@ class VEDirect:
             raise AssertionError()
 
     def read_data_single(self, flush=True):
-        """ Wait until we get a single complete packet, then return it
+        """ Wait until we get a single complete record, then return it
         """
         if self.emulate:
             time.sleep(1.0)
@@ -324,18 +324,18 @@ class VEDirect:
                 byte = self.ser.read()
                 if byte:
                     # got a byte (didn't time out)
-                    packet = self._input(byte)
-                    if packet is not None:
-                        return self.typecast(packet)
+                    record = self._input(byte)
+                    if record is not None:
+                        return self.typecast(record)
 
     def read_data_single_callback(self, callbackfunction, **kwargs):
-        """ Continue to wait until we get a single complete packet, then call the callback function with the result.
+        """ Continue to wait until we get a single complete record, then call the callback function with the result.
         """
         callbackfunction(self.read_data_single(), **kwargs)
 
     def read_data_callback(self, callbackfunction, n=-1, **kwargs):
-        """ Non-blocking service to continuously read packets, and when one is formed, call the
-        callback function with the packet as the first argument.
+        """ Non-blocking service to continuously read records, and when one is formed, call the
+        callback function with the record as the first argument.
         """
         while n != 0:
             if self.emulate:
@@ -347,9 +347,9 @@ class VEDirect:
                 byte = self.ser.read()
                 if byte:
                     # got a byte (didn't time out)
-                    packet = self._input(byte)
-                    if packet is not None:
-                        callbackfunction(self.typecast(packet), **kwargs)
+                    record = self._input(byte)
+                    if record is not None:
+                        callbackfunction(self.typecast(record), **kwargs)
                         if n > 0:
                             n = n - 1
 
@@ -362,7 +362,7 @@ def main():
     # provide a simple entry point that streams data from a VEDirect device to stdout
     parser = argparse.ArgumentParser(description='Read VE.Direct device and stream data to stdout')
     parser.add_argument('--port', help='Serial port to read from', type=str, default='')
-    parser.add_argument('--n', help='number of packets to read (or default=0 for infinite)', default=0, type=int)
+    parser.add_argument('--n', help='number of records to read (or default=-1 for infinite)', default=-1, type=int)
     parser.add_argument('--timeout', help='Serial port read timeout, seconds', type=int, default='60')
     parser.add_argument('--emulate', help='emulate one of [ALL, BMV_600, BMV_700, MPPT, PHX_INVERTER]',
                         default='', type=str)

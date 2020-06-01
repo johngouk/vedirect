@@ -5,8 +5,8 @@ from vedirect import VEDirectDeviceEmulator
 import unittest
 
 
-def store_packet(packet, packetlist=None):
-    packetlist.append(packet)
+def store_record(record, recordlist=None):
+    recordlist.append(record)
 
 
 class TestVEDirect(unittest.TestCase):
@@ -26,10 +26,10 @@ class TestVEDirect(unittest.TestCase):
 
         # Create a separate device emulator thread that connects to the master port
         vede = VEDirectDeviceEmulator(master, model='MPPT')
-        thread_master = threading.Thread(target=vede.send_packet)
+        thread_master = threading.Thread(target=vede.send_record)
         thread_master.start()
 
-        # Wait a maximum of 5 seconds for the IoT device client to finish (it getting one packet)
+        # Wait a maximum of 5 seconds for the IoT device client to finish (it getting one record)
         thread_slave.join(timeout=5)
 
         self.assertDictEqual(self.data, VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']))
@@ -43,16 +43,16 @@ class TestVEDirect(unittest.TestCase):
     def test_emulate(self):
         """ Test in emulation mode (no port access) """
         v = VEDirect(emulate='MPPT')
-        onepacket=v.read_data_single()
-        self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), onepacket)
+        onerecord=v.read_data_single()
+        self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), onerecord)
 
     def test_emulate2(self):
         """ Test in emulation mode (no port access) """
-        packets = []
+        records = []
         v = VEDirect(emulate='MPPT')
-        v.read_data_callback(store_packet, n=2, packetlist=packets)
-        self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), packets[0])
-        self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), packets[1])
+        v.read_data_callback(store_record, n=2, recordlist=records)
+        self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), records[0])
+        self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), records[1])
 
 
 if __name__ == '__main__':

@@ -113,30 +113,30 @@ class VEDirectDeviceEmulator:
         result.append((256 - (sum(result) % 256)) % 256)
         return result
 
-    def send_packet(self):
+    def send_record(self):
         # print(f'Converting and sending: {self.data[self.model]}')
-        packet = self.convert(self.data[self.model])
-        self.writer(bytes(packet))
-        # print(f'Sent: {packet}')
-        # self.ser.write(bytes(packet))
+        record = self.convert(self.data[self.model])
+        self.writer(bytes(record))
+        # print(f'Sent: {record}')
+        # self.ser.write(bytes(record))
 
-    def send_packets(self, n=0, samples_per_hour=720.0):
-        """ Send n packets """
+    def send_records(self, n=0, samples_per_hour=720.0):
+        """ Send n records """
         sleep_seconds = 3600.0/float(samples_per_hour)
         if n:
             for i in range(0, n):
-                self.send_packet()
+                self.send_record()
                 time.sleep(sleep_seconds)
         else:
             while True:
-                self.send_packet()
+                self.send_record()
                 time.sleep(sleep_seconds)
 
 
 def main():
     parser = argparse.ArgumentParser(description='A simple VE.Direct emulator')
     parser.add_argument('--port', help='Serial port to write', type=str, default='')
-    parser.add_argument('--n', help='number of packets to send (or default=0 for infinite)', default=0, type=int)
+    parser.add_argument('--n', help='number of records to send (or default=0 for infinite)', default=0, type=int)
     parser.add_argument('--sph', default=60, help='samples per hour (default=False)', type=float)
     parser.add_argument('--model', help="one of ['ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']",
                         default=model_default, type=str)
@@ -146,7 +146,7 @@ def main():
     else:
         destination = f"<stdout>"
     print(f"VEDirect emulator running. Writing to {destination}")
-    VEDirectDeviceEmulator(args.port, model=args.model).send_packets(n=args.n, samples_per_hour=args.sph)
+    VEDirectDeviceEmulator(args.port, model=args.model).send_records(n=args.n, samples_per_hour=args.sph)
     print("Done")
 
 
