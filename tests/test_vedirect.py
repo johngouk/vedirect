@@ -41,7 +41,7 @@ class TestVEDirect(unittest.TestCase):
         v = VEDirect(emulate='MPPT')
         onepacket=v.read_data_single()
         self.assertEqual(VEDirect.typecast(VEDirectDeviceEmulator.data['MPPT']), onepacket)
-     
+
 
 if __name__ == '__main__':
     unittest.main()
