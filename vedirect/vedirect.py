@@ -10,8 +10,9 @@ import serial
 import argparse
 import time
 from .vedirect_device_emulator import VEDirectDeviceEmulator
-import json
 import sys
+import logging
+log = logging.getLogger(__name__)
 
 
 def int_base_guess(string_val):
@@ -366,7 +367,10 @@ def main():
     parser.add_argument('--timeout', help='Serial port read timeout, seconds', type=int, default='60')
     parser.add_argument('--emulate', help='emulate one of [ALL, BMV_600, BMV_700, MPPT, PHX_INVERTER]',
                         default='', type=str)
+    parser.add_argument('--loglevel', help='logging level - one of [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
+                        default='ERROR')
     args = parser.parse_args()
+    logging.basicConfig(level=args.loglevel.upper())
     if not args.port and not args.emulate:
         print("Must specify a port to listen.")
         sys.exit(1)
