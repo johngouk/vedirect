@@ -44,13 +44,21 @@ class VEDirect:
         return VEDirect.error_codes[int(code)]
 
     device_state_map = {
-        0: 'not charging',
-        1: 'low power',
-        2: 'fault',
-        3: 'charging bulk',
-        4: 'charging absorption',
-        5: 'charging float',
-        9: 'inverting'
+        0: 'Off',
+        1: 'Low power',
+        2: 'Fault',
+        3: 'Bulk',
+        4: 'Absorption',
+        5: 'Float',
+        6: 'Storage',
+        7: 'Equalize (manual)',
+        9: 'Inverting',
+        11: 'Power supply',
+        245: 'Starting-up',
+        246: 'Repeated absorption',
+        247: 'Auto equalize / Recondition',
+        248: 'BatterySafe',
+        252: 'External Control'
     }
 
     @staticmethod
@@ -63,6 +71,7 @@ class VEDirect:
     }
 
     offReasonDecode = {
+        0x000: '',
         0x001: 'No input power',
         0x002: 'Switched off (power switch)',
         0x004: 'Switched off (device mode register)',
@@ -77,6 +86,12 @@ class VEDirect:
     capBleDecode = {
         0x001: 'BLE supports switching off',
         0x002: 'BLE switching off is permanent'
+    }
+
+    trackerModeDecode = {
+        0x000: 'Off',
+        0x001: 'Voltage or current limited',
+        0x002: 'MPPT Tracker active'
     }
 
     alarmReasonDecode = {
