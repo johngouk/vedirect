@@ -300,8 +300,11 @@ class VEDirect:
             self.bytes_sum += ord(byte)
             if byte == self.header1:
                 self.state = self.WAIT_HEADER2
-                self.dict[str(self.key.decode(self.encoding))] = str(
-                    self.value.decode(self.encoding))
+                try:
+                    self.dict[str(self.key.decode(self.encoding))] = str(
+                        self.value.decode(self.encoding))
+                except UnicodeDecodeError:
+                    log.warning(f"Could not decode key {self.key} and value {self.value}")
                 self.key = b''
                 self.value = b''
             else:
