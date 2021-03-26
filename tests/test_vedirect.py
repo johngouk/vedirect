@@ -1,7 +1,7 @@
 import os, pty
 import threading
-from vedirect import VEDirect
-from vedirect import VEDirectDeviceEmulator
+from src.vedirect import VEDirect
+from src.vedirect import VEDirectDeviceEmulator
 import unittest
 
 

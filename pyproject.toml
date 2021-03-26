@@ -1,0 +1,15 @@
+#[dependencies]
+#pyserial = "^3.8"
+#paho-mqtt = "^1.5"
+
+#[scripts]
+#vedirect = "vedirect.vedirect:main"
+#vedirect_device_emulator = "vedirect.vedirect_device_emulator:main"
+    
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel"
+]
+build-backend = "setuptools.build_meta"
+
