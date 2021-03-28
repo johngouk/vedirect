@@ -8,14 +8,29 @@ This is a forked version of a package originally created by Janne Kario (https:/
 
 To install directly from GitHub:
 ```
-python3 -m pip install "git+https://github.com/jmfife/vedirect[examples]"
+$ python3 -m pip install "git+https://github.com/jmfife/vedirect[examples]"
 ```
 
 If you have cloned or forked the repo already to your local directory and want to use it in live (editable mode):
 ```
-python3 -m pip install -e ".[examples]"
+$ python3 -m pip install -e ".[examples]"
 ```
 Note in both cases above, the dependencies needed to run the examples are also installed.
+
+## Check
+
+Test both command line entry points:
+```
+$ vedirect_device_emulator --sph 3600 --n 2
+VEDirect emulator running. Writing to <stdout>
+b'\r\nV\t12800\r\nVPV\t3350\r\nPPV\t130\r\nI\t15000\r\nIL\t1500\r\nLOAD\tON\r\nRelay\tOFF\r\nH19\t456\r\nH20\t45\r\nH21\t300\r\nH22\t45\r\nH23\t350\r\nERR\t0\r\nCS\t5\r\nFW\t1.19\r\nPID\t0xA042\r\nSER#\tHQ141112345\r\nHSDS\t0\r\nMPPT\t2\r\nChecksum\t\x99'
+b'\r\nV\t12800\r\nVPV\t3350\r\nPPV\t130\r\nI\t15000\r\nIL\t1500\r\nLOAD\tON\r\nRelay\tOFF\r\nH19\t456\r\nH20\t45\r\nH21\t300\r\nH22\t45\r\nH23\t350\r\nERR\t0\r\nCS\t5\r\nFW\t1.19\r\nPID\t0xA042\r\nSER#\tHQ141112345\r\nHSDS\t0\r\nMPPT\t2\r\nChecksum\t\x99'
+Done
+
+$ vedirect --emulate=mppt --n=2
+{'V': 12800, 'VPV': 3350, 'PPV': 130, 'I': 15000, 'IL': 1500, 'LOAD': 'ON', 'Relay': 'OFF', 'H19': 456, 'H20': 45, 'H21': 300, 'H22': 45, 'H23': 350, 'ERR': 0, 'CS': 5, 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': 0, 'MPPT': 2}
+{'V': 12800, 'VPV': 3350, 'PPV': 130, 'I': 15000, 'IL': 1500, 'LOAD': 'ON', 'Relay': 'OFF', 'H19': 456, 'H20': 45, 'H21': 300, 'H22': 45, 'H23': 350, 'ERR': 0, 'CS': 5, 'FW': '1.19', 'PID': '0xA042', 'SER#': 'HQ141112345', 'HSDS': 0, 'MPPT': 2}
+```
 
 ## Quick Simulation
 
