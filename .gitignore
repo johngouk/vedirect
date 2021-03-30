@@ -134,6 +134,8 @@ dmypy.json
 # Database
 *.db
 
-
 # Mac stuff
 *.DS_Store
+
+# VS Code
+.vscode
