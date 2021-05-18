@@ -276,8 +276,7 @@ class VEDirect:
                 self.ser.init(baudrate=19200, timeout_chars=10)
             else:
                 self.ser = Serial(port=serialport, baudrate=19200, timeout=timeout)
-            self.header1 = b'\r'
-            self.header2 = b'\n'
+            self.header1 = b'\n'
             self.hexmarker = b':'
             self.delimiter = b'\t'
             self.key = b''
@@ -288,7 +287,7 @@ class VEDirect:
             if not MICROPYTHON:
                 self.ser.flushInput()
 
-    (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
+    (HEX, WAIT_HEADER1, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(5)
 
     def _input(self, byte):
         """ Accepts a new byte and tries to finish constructing a record.
@@ -299,20 +298,19 @@ class VEDirect:
             log.debug("Changing to HEX state")
             self.state = self.HEX
 
+        if self.state is not self.HEX:
+            self.bytes_sum += ord(byte)
+            if byte == b"\r":
+                # Ignore these, they are optional. Do count towards CRC!
+                log.debug("Skipping carriage return")
+                return None
+
         if self.state == self.WAIT_HEADER1:
             if byte == self.header1:
-                log.debug("Found WAIT_HEADER1")
-                self.bytes_sum += ord(byte)
-                self.state = self.WAIT_HEADER2
-            return None
-        if self.state == self.WAIT_HEADER2:
-            if byte == self.header2:
-                log.debug("Found WAIT_HEADER2")
-                self.bytes_sum += ord(byte)
+                log.debug("Found header1")
                 self.state = self.IN_KEY
             return None
         elif self.state == self.IN_KEY:
-            self.bytes_sum += ord(byte)
             if byte == self.delimiter:
                 log.debug("Found delimiter")
                 if self.key == b'Checksum':
@@ -324,9 +322,8 @@ class VEDirect:
                 self.key += byte
             return None
         elif self.state == self.IN_VALUE:
-            self.bytes_sum += ord(byte)
             if byte == self.header1:
-                self.state = self.WAIT_HEADER2
+                log.debug("Found header1, ending value read")
                 try:
                     self.dict[str(self.key.decode(self.encoding))] = str(
                         self.value.decode(self.encoding))
@@ -334,11 +331,12 @@ class VEDirect:
                     log.warning("Could not decode key {} and value {}".format(self.key, self.value))
                 self.key = b''
                 self.value = b''
+                self.state = self.IN_KEY
             else:
                 self.value += byte
             return None
         elif self.state == self.IN_CHECKSUM:
-            self.bytes_sum += ord(byte)
+            log.debug("Checking checksum... Current {}, CRC {}".format(self.bytes_sum % 256, ord(byte)))
             self.key = b''
             self.value = b''
             self.state = self.WAIT_HEADER1
@@ -349,6 +347,7 @@ class VEDirect:
                 return dict_copy
             else:
                 # print('Malformed record')
+                log.debug("Malformed record, Remainder: {}".format(self.bytes_sum % 256))
                 self.bytes_sum = 0
         elif self.state == self.HEX:
             self.bytes_sum = 0
