@@ -7,12 +7,16 @@
 # https://www.sv-zanshin.com/r/manuals/victron-ve-direct-protocol.pdf
 
 import serial
-import argparse
 import time
-from .vedirect_device_emulator import VEDirectDeviceEmulator
 import sys
 import logging
 log = logging.getLogger(__name__)
+
+
+# Protect for micropython version
+if sys.implementation.name != "micropython":
+    from .vedirect_device_emulator import VEDirectDeviceEmulator
+    import argparse
 
 
 def int_base_guess(string_val):
@@ -252,6 +256,8 @@ class VEDirect:
             timeout (float): Read timeout value (seconds)
             emulate (str): One of ['', 'ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']
         """
+        if sys.implementation.name == "micropython" and emulate:
+            raise ValueError("Emulation not permitted in micropython")
         self.emulate = emulate
         if not emulate:
             self.serialport = serialport
@@ -396,5 +402,5 @@ def main():
     ve.read_data_callback(print_data_callback, args.n)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__' and sys.implementation.name != "micropython":
     main()
