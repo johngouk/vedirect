@@ -6,17 +6,27 @@
 # 2019-01-16 JMF Modified for Python 3 and updated protocol from
 # https://www.sv-zanshin.com/r/manuals/victron-ve-direct-protocol.pdf
 
-import serial
+
 import time
 import sys
 import logging
 log = logging.getLogger(__name__)
 
 
+MICROPYTHON = False
+
+
 # Protect for micropython version
-if sys.implementation.name != "micropython":
+if sys.implementation.name == "micropython":
+    MICROPYTHON = True
+
+if not MICROPYTHON:
     from .vedirect_device_emulator import VEDirectDeviceEmulator
     import argparse
+    from serial import Serial
+else:
+    from machine import UART
+    from machine import Timer
 
 
 def int_base_guess(string_val):
@@ -252,16 +262,20 @@ class VEDirect:
         """ Constructor for a Victron VEDirect serial communication session.
 
         Params:
-            serialport (str): The name of the serial port to open
+            serialport (str): The name or number of the serial port to open
             timeout (float): Read timeout value (seconds)
             emulate (str): One of ['', 'ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']
         """
-        if sys.implementation.name == "micropython" and emulate:
+        if MICROPYTHON and emulate:
             raise ValueError("Emulation not permitted in micropython")
         self.emulate = emulate
         if not emulate:
             self.serialport = serialport
-            self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
+            if MICROPYTHON:
+                self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
+                self.ser.init(baudrate=19200, timeout_chars=10)
+            else:
+                self.ser = Serial(port=serialport, baudrate=19200, timeout=timeout)
             self.header1 = b'\r'
             self.header2 = b'\n'
             self.hexmarker = b':'
@@ -271,7 +285,8 @@ class VEDirect:
             self.bytes_sum = 0
             self.state = self.WAIT_HEADER1
             self.dict = {}
-            self.ser.flushInput()
+            if not MICROPYTHON:
+                self.ser.flushInput()
 
     (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
 
@@ -279,23 +294,29 @@ class VEDirect:
         """ Accepts a new byte and tries to finish constructing a record.
         When a record is complete, it will be returned as a dictionary
         """
+        log.debug("State: {}, Input: {}".format(self.state, byte))
         if byte == self.hexmarker and self.state != self.IN_CHECKSUM:
+            log.debug("Changing to HEX state")
             self.state = self.HEX
 
         if self.state == self.WAIT_HEADER1:
             if byte == self.header1:
+                log.debug("Found WAIT_HEADER1")
                 self.bytes_sum += ord(byte)
                 self.state = self.WAIT_HEADER2
             return None
         if self.state == self.WAIT_HEADER2:
             if byte == self.header2:
+                log.debug("Found WAIT_HEADER2")
                 self.bytes_sum += ord(byte)
                 self.state = self.IN_KEY
             return None
         elif self.state == self.IN_KEY:
             self.bytes_sum += ord(byte)
             if byte == self.delimiter:
+                log.debug("Found delimiter")
                 if self.key == b'Checksum':
+                    log.debug("Found Checksum")
                     self.state = self.IN_CHECKSUM
                 else:
                     self.state = self.IN_VALUE
@@ -310,7 +331,7 @@ class VEDirect:
                     self.dict[str(self.key.decode(self.encoding))] = str(
                         self.value.decode(self.encoding))
                 except UnicodeDecodeError:
-                    log.warning(f"Could not decode key {self.key} and value {self.value}")
+                    log.warning("Could not decode key {} and value {}".format(self.key, self.value))
                 self.key = b''
                 self.value = b''
             else:
@@ -336,18 +357,26 @@ class VEDirect:
         else:
             raise AssertionError()
 
-    def read_data_single(self, flush=True):
-        """ Wait until we get a single complete record, then return it
+    def read_data_single(self, flush=True, timeout=None):
+        """ Wait until we get a single complete record, then return it. Optional timeout in ms
         """
+        timer = None
         if self.emulate:
             time.sleep(1.0)
             return self.typecast(VEDirectDeviceEmulator.data[self.emulate])
         else:
-            if flush:
+            if flush and not MICROPYTHON:
                 self.ser.flushInput()
+            if timeout and MICROPYTHON:
+                timer = Timer.Chrono()
+                timer.start()
             while True:
-                byte = self.ser.read()
+                if timer and timer.read_ms() > timeout:
+                    log.debug("Timed out")
+                    return None
+                byte = self.ser.read(1)
                 if byte:
+                    # log.debug("Read: {}".format(byte))
                     # got a byte (didn't time out)
                     record = self._input(byte)
                     if record is not None:
@@ -402,5 +431,5 @@ def main():
     ve.read_data_callback(print_data_callback, args.n)
 
 
-if __name__ == '__main__' and sys.implementation.name != "micropython":
+if __name__ == '__main__' and not MICROPYTHON:
     main()
