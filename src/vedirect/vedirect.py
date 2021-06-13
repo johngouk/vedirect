@@ -10,6 +10,7 @@
 import time
 import sys
 import logging
+
 log = logging.getLogger(__name__)
 
 
@@ -258,6 +259,9 @@ class VEDirect:
         'W': ['W', 1, 0]
     }
 
+    # A list of received but not consumed records
+    _buff_records = list()
+
     def __init__(self, serialport='', timeout=60, emulate=''):
         """ Constructor for a Victron VEDirect serial communication session.
 
@@ -355,6 +359,25 @@ class VEDirect:
                 self.state = self.WAIT_HEADER1
         else:
             raise AssertionError()
+
+    def read(self) -> list(dict):
+        """
+        Check for input buffer, process if present, return record if complete. Non-blocking
+        """
+        if not MICROPYTHON:
+            raise NotImplementedError()
+        input_buf_len = self.ser.any()
+        if input_buf_len:
+            input_buf = self.ser.read(input_buf_len)
+            for byte in input_buf:
+                record = self._input(byte.to_bytes(1, sys.byteorder))
+                if record is not None:
+                    record = self.typecast(record)
+                    self._buff_records.append(record)
+        try:
+            return self._buff_records.pop()
+        except IndexError:
+            return None
 
     def read_data_single(self, flush=True, timeout=None):
         """ Wait until we get a single complete record, then return it. Optional timeout in ms
