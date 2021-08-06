@@ -10,6 +10,7 @@
 import time
 import sys
 import logging
+from typing import List, Dict
 
 log = logging.getLogger(__name__)
 
@@ -360,7 +361,7 @@ class VEDirect:
         else:
             raise AssertionError()
 
-    def read(self) -> list(dict):
+    def read(self) -> List[Dict]:
         """
         Check for input buffer, process if present, return record if complete. Non-blocking
         """

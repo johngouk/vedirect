@@ -1,8 +1,12 @@
-import os, pty
+import os
 import threading
 from src.vedirect import VEDirect
 from src.vedirect import VEDirectDeviceEmulator
 import unittest
+import pytest
+
+if os.name != "nt":
+    import pty
 
 
 def store_record(record, recordlist=None):
@@ -16,6 +20,8 @@ class TestVEDirect(unittest.TestCase):
 
     def test_v_mppt(self):
         """ Test with an MPPT emulator on a fake serial port """
+        if os.name == "nt":
+            pytest.skip("Unspported OS")
         master, slave = pty.openpty()  # open the pseudoterminal
         s_name = os.ttyname(slave)  # translate the slave fd to a filename
 
