@@ -16,16 +16,13 @@ log = logging.getLogger(__name__)
 
 
 MICROPYTHON = False
-
-
 # Protect for micropython version
-if sys.implementation.name == "micropython":
+if "micropython" in str(sys.implementation):
     MICROPYTHON = True
 
 if not MICROPYTHON:
-    from .vedirect_device_emulator import VEDirectDeviceEmulator
     import argparse
-    from serial import Serial
+    import serial
 else:
     from machine import UART
     from machine import Timer
@@ -263,34 +260,33 @@ class VEDirect:
     # A list of received but not consumed records
     _buff_records = list()
 
-    def __init__(self, serialport='', timeout=60, emulate=''):
+    def __init__(self, serialport='', timeout=60):
         """ Constructor for a Victron VEDirect serial communication session.
 
         Params:
             serialport (str): The name or number of the serial port to open
             timeout (float): Read timeout value (seconds)
-            emulate (str): One of ['', 'ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']
         """
-        if MICROPYTHON and emulate:
-            raise ValueError("Emulation not permitted in micropython")
-        self.emulate = emulate
-        if not emulate:
-            self.serialport = serialport
-            if MICROPYTHON:
-                self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
-                self.ser.init(baudrate=19200, timeout_chars=10)
-            else:
-                self.ser = Serial(port=serialport, baudrate=19200, timeout=timeout)
-            self.header1 = b'\n'
-            self.hexmarker = b':'
-            self.delimiter = b'\t'
-            self.key = b''
-            self.value = b''
-            self.bytes_sum = 0
-            self.state = self.WAIT_HEADER1
-            self.dict = {}
-            if not MICROPYTHON:
+        self.serialport = serialport
+        if MICROPYTHON:
+            self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
+            self.ser.init(baudrate=19200, timeout_chars=10)
+        else:
+            self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
+        self.header1 = b'\n'
+        self.hexmarker = b':'
+        self.delimiter = b'\t'
+        self.key = b''
+        self.value = b''
+        self.bytes_sum = 0
+        self.state = self.WAIT_HEADER1
+        self.dict = {}
+        if not MICROPYTHON:
+            if hasattr(self.ser, "flushInput"):
                 self.ser.flushInput()
+            else:
+                # Changed in pyserial>=3.0
+                self.ser.reset_input_buffer()
 
     (HEX, WAIT_HEADER1, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(5)
 
@@ -384,55 +380,22 @@ class VEDirect:
         """ Wait until we get a single complete record, then return it. Optional timeout in ms
         """
         timer = None
-        if self.emulate:
-            time.sleep(1.0)
-            return self.typecast(VEDirectDeviceEmulator.data[self.emulate])
-        else:
-            if flush and not MICROPYTHON:
-                self.ser.flushInput()
-            if timeout and MICROPYTHON:
-                timer = Timer.Chrono()
-                timer.start()
-            while True:
-                if timer and timer.read_ms() > timeout:
-                    log.debug("Timed out")
-                    return None
-                byte = self.ser.read(1)
-                if byte:
-                    # log.debug("Read: {}".format(byte))
-                    # got a byte (didn't time out)
-                    record = self._input(byte)
-                    if record is not None:
-                        return self.typecast(record)
-
-    def read_data_single_callback(self, callbackfunction, **kwargs):
-        """ Continue to wait until we get a single complete record, then call the callback function with the result.
-        """
-        callbackfunction(self.read_data_single(), **kwargs)
-
-    def read_data_callback(self, callbackfunction, n=-1, **kwargs):
-        """ Non-blocking service to continuously read records, and when one is formed, call the
-        callback function with the record as the first argument.
-        """
-        while n != 0:
-            if self.emulate:
-                time.sleep(1.0)
-                callbackfunction(self.typecast(VEDirectDeviceEmulator.data[self.emulate]), **kwargs)
-                if n > 0:
-                    n = n - 1
-            else:
-                byte = self.ser.read()
-                if byte:
-                    # got a byte (didn't time out)
-                    record = self._input(byte)
-                    if record is not None:
-                        callbackfunction(self.typecast(record), **kwargs)
-                        if n > 0:
-                            n = n - 1
-
-
-def print_data_callback(data):
-    print(data)
+        if flush and not MICROPYTHON:
+            self.ser.flushInput()
+        if timeout and MICROPYTHON:
+            timer = Timer.Chrono()
+            timer.start()
+        while True:
+            if timer and timer.read_ms() > timeout:
+                log.debug("Timed out")
+                return None
+            byte = self.ser.read(1)
+            if byte:
+                # log.debug("Read: {}".format(byte))
+                # got a byte (didn't time out)
+                record = self._input(byte)
+                if record is not None:
+                    return self.typecast(record)
 
 
 def main():
@@ -441,16 +404,14 @@ def main():
     parser.add_argument('--port', help='Serial port to read from', type=str, default='')
     parser.add_argument('--n', help='number of records to read (or default=-1 for infinite)', default=-1, type=int)
     parser.add_argument('--timeout', help='Serial port read timeout, seconds', type=int, default='60')
-    parser.add_argument('--emulate', help='emulate one of [ALL, BMV_600, BMV_700, MPPT, PHX_INVERTER]',
-                        default='', type=str)
     parser.add_argument('--loglevel', help='logging level - one of [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
                         default='ERROR')
     args = parser.parse_args()
     logging.basicConfig(level=args.loglevel.upper())
-    if not args.port and not args.emulate:
+    if not args.port:
         print("Must specify a port to listen.")
-        sys.exit(1)
-    ve = VEDirect(args.port, args.timeout, args.emulate.upper())
+        raise ValueError("Must give a port")
+    ve = VEDirect(args.port, args.timeout)
     ve.read_data_callback(print_data_callback, args.n)
 
 
