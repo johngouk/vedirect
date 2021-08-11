@@ -97,7 +97,7 @@ class VEDirectDeviceEmulator:
         """
         os.write(self.serialport, s)
 
-    def convert(self, datadict):
+    def record_to_bytes(self, datadict):
         result = list()
         for key in self.data[self.model]:
             result.append(ord('\r'))
@@ -114,9 +114,13 @@ class VEDirectDeviceEmulator:
         return result
 
     def send_record(self):
-        record = self.convert(self.data[self.model])
-        self.writer(bytes(record))
+        self.writer(self.get_bytes())
 
+    def get_record(self):
+        return self.data[self.model]
+
+    def get_bytes(self):
+        return bytes(self.record_to_bytes(self.get_record()))
 
     def send_records(self, n=-1, samples_per_hour=720.0):
         """ Send n records """

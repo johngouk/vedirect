@@ -5,6 +5,7 @@ import logging
 from serial import SerialBase
 # noinspection PyUnresolvedReferences
 import serial
+# logging.basicConfig(level=logging.DEBUG)
 
 
 @fixture(scope="function")
