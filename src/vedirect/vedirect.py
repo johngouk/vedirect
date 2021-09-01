@@ -6,13 +6,26 @@
 # 2019-01-16 JMF Modified for Python 3 and updated protocol from
 # https://www.sv-zanshin.com/r/manuals/victron-ve-direct-protocol.pdf
 
-import serial
-import argparse
+
 import time
-from .vedirect_device_emulator import VEDirectDeviceEmulator
 import sys
 import logging
+from typing import List, Dict
+
 log = logging.getLogger(__name__)
+
+
+MICROPYTHON = False
+# Protect for micropython version
+if "micropython" in str(sys.implementation):
+    MICROPYTHON = True
+
+if not MICROPYTHON:
+    import argparse
+    import serial
+else:
+    from machine import UART
+    from machine import Timer
 
 
 def int_base_guess(string_val):
@@ -244,52 +257,65 @@ class VEDirect:
         'W': ['W', 1, 0]
     }
 
-    def __init__(self, serialport='', timeout=60, emulate=''):
+    # A list of received but not consumed records
+    _buff_records = list()
+
+    def __init__(self, serialport='', timeout=60):
         """ Constructor for a Victron VEDirect serial communication session.
 
         Params:
-            serialport (str): The name of the serial port to open
+            serialport (str): The name or number of the serial port to open
             timeout (float): Read timeout value (seconds)
-            emulate (str): One of ['', 'ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']
         """
-        self.emulate = emulate
-        if not emulate:
-            self.serialport = serialport
+        self.serialport = serialport
+        if MICROPYTHON:
+            self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
+            self.ser.init(baudrate=19200, timeout_chars=10)
+        else:
             self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
-            self.header1 = b'\r'
-            self.header2 = b'\n'
-            self.hexmarker = b':'
-            self.delimiter = b'\t'
-            self.key = b''
-            self.value = b''
-            self.bytes_sum = 0
-            self.state = self.WAIT_HEADER1
-            self.dict = {}
-            self.ser.flushInput()
+        self.header1 = b'\n'
+        self.hexmarker = b':'
+        self.delimiter = b'\t'
+        self.key = b''
+        self.value = b''
+        self.bytes_sum = 0
+        self.state = self.WAIT_HEADER1
+        self.dict = {}
+        if not MICROPYTHON:
+            if hasattr(self.ser, "flushInput"):
+                self.ser.flushInput()
+            else:
+                # Changed in pyserial>=3.0
+                self.ser.reset_input_buffer()
 
-    (HEX, WAIT_HEADER1, WAIT_HEADER2, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(6)
+    (HEX, WAIT_HEADER1, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(5)
 
     def _input(self, byte):
         """ Accepts a new byte and tries to finish constructing a record.
         When a record is complete, it will be returned as a dictionary
         """
+        log.debug("State: {}, Input: {}".format(self.state, byte))
         if byte == self.hexmarker and self.state != self.IN_CHECKSUM:
+            log.debug("Changing to HEX state")
             self.state = self.HEX
+
+        if self.state is not self.HEX:
+            self.bytes_sum += ord(byte)
+            if byte == b"\r":
+                # Ignore these, they are optional. Do count towards CRC!
+                log.debug("Skipping carriage return")
+                return None
 
         if self.state == self.WAIT_HEADER1:
             if byte == self.header1:
-                self.bytes_sum += ord(byte)
-                self.state = self.WAIT_HEADER2
-            return None
-        if self.state == self.WAIT_HEADER2:
-            if byte == self.header2:
-                self.bytes_sum += ord(byte)
+                log.debug("Found header1")
                 self.state = self.IN_KEY
             return None
         elif self.state == self.IN_KEY:
-            self.bytes_sum += ord(byte)
             if byte == self.delimiter:
+                log.debug("Found delimiter")
                 if self.key == b'Checksum':
+                    log.debug("Found Checksum")
                     self.state = self.IN_CHECKSUM
                 else:
                     self.state = self.IN_VALUE
@@ -297,21 +323,21 @@ class VEDirect:
                 self.key += byte
             return None
         elif self.state == self.IN_VALUE:
-            self.bytes_sum += ord(byte)
             if byte == self.header1:
-                self.state = self.WAIT_HEADER2
+                log.debug("Found header1, ending value read")
                 try:
                     self.dict[str(self.key.decode(self.encoding))] = str(
                         self.value.decode(self.encoding))
                 except UnicodeDecodeError:
-                    log.warning(f"Could not decode key {self.key} and value {self.value}")
+                    log.warning("Could not decode key {} and value {}".format(self.key, self.value))
                 self.key = b''
                 self.value = b''
+                self.state = self.IN_KEY
             else:
                 self.value += byte
             return None
         elif self.state == self.IN_CHECKSUM:
-            self.bytes_sum += ord(byte)
+            log.debug("Checking checksum... Current {}, CRC {}".format(self.bytes_sum % 256, ord(byte)))
             self.key = b''
             self.value = b''
             self.state = self.WAIT_HEADER1
@@ -322,6 +348,7 @@ class VEDirect:
                 return dict_copy
             else:
                 # print('Malformed record')
+                log.debug("Malformed record, Remainder: {}".format(self.bytes_sum % 256))
                 self.bytes_sum = 0
         elif self.state == self.HEX:
             self.bytes_sum = 0
@@ -330,51 +357,45 @@ class VEDirect:
         else:
             raise AssertionError()
 
-    def read_data_single(self, flush=True):
-        """ Wait until we get a single complete record, then return it
+    def read(self) -> List[Dict]:
         """
-        if self.emulate:
-            time.sleep(1.0)
-            return self.typecast(VEDirectDeviceEmulator.data[self.emulate])
-        else:
-            if flush:
-                self.ser.flushInput()
-            while True:
-                byte = self.ser.read()
-                if byte:
-                    # got a byte (didn't time out)
-                    record = self._input(byte)
-                    if record is not None:
-                        return self.typecast(record)
-
-    def read_data_single_callback(self, callbackfunction, **kwargs):
-        """ Continue to wait until we get a single complete record, then call the callback function with the result.
+        Check for input buffer, process if present, return record if complete. Non-blocking
         """
-        callbackfunction(self.read_data_single(), **kwargs)
+        if not MICROPYTHON:
+            raise NotImplementedError()
+        input_buf_len = self.ser.any()
+        if input_buf_len:
+            input_buf = self.ser.read(input_buf_len)
+            for byte in input_buf:
+                record = self._input(byte.to_bytes(1, sys.byteorder))
+                if record is not None:
+                    record = self.typecast(record)
+                    self._buff_records.append(record)
+        try:
+            return self._buff_records.pop()
+        except IndexError:
+            return None
 
-    def read_data_callback(self, callbackfunction, n=-1, **kwargs):
-        """ Non-blocking service to continuously read records, and when one is formed, call the
-        callback function with the record as the first argument.
+    def read_data_single(self, flush=True, timeout=None):
+        """ Wait until we get a single complete record, then return it. Optional timeout in ms
         """
-        while n != 0:
-            if self.emulate:
-                time.sleep(1.0)
-                callbackfunction(self.typecast(VEDirectDeviceEmulator.data[self.emulate]), **kwargs)
-                if n > 0:
-                    n = n - 1
-            else:
-                byte = self.ser.read()
-                if byte:
-                    # got a byte (didn't time out)
-                    record = self._input(byte)
-                    if record is not None:
-                        callbackfunction(self.typecast(record), **kwargs)
-                        if n > 0:
-                            n = n - 1
-
-
-def print_data_callback(data):
-    print(data)
+        timer = None
+        if flush and not MICROPYTHON:
+            self.ser.flushInput()
+        if timeout and MICROPYTHON:
+            timer = Timer.Chrono()
+            timer.start()
+        while True:
+            if timer and timer.read_ms() > timeout:
+                log.debug("Timed out")
+                return None
+            byte = self.ser.read(1)
+            if byte:
+                # log.debug("Read: {}".format(byte))
+                # got a byte (didn't time out)
+                record = self._input(byte)
+                if record is not None:
+                    return self.typecast(record)
 
 
 def main():
@@ -383,18 +404,16 @@ def main():
     parser.add_argument('--port', help='Serial port to read from', type=str, default='')
     parser.add_argument('--n', help='number of records to read (or default=-1 for infinite)', default=-1, type=int)
     parser.add_argument('--timeout', help='Serial port read timeout, seconds', type=int, default='60')
-    parser.add_argument('--emulate', help='emulate one of [ALL, BMV_600, BMV_700, MPPT, PHX_INVERTER]',
-                        default='', type=str)
     parser.add_argument('--loglevel', help='logging level - one of [DEBUG, INFO, WARNING, ERROR, CRITICAL]',
                         default='ERROR')
     args = parser.parse_args()
     logging.basicConfig(level=args.loglevel.upper())
-    if not args.port and not args.emulate:
+    if not args.port:
         print("Must specify a port to listen.")
-        sys.exit(1)
-    ve = VEDirect(args.port, args.timeout, args.emulate.upper())
+        raise ValueError("Must give a port")
+    ve = VEDirect(args.port, args.timeout)
     ve.read_data_callback(print_data_callback, args.n)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__' and not MICROPYTHON:
     main()
