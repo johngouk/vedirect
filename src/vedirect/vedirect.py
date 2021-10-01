@@ -242,7 +242,10 @@ class VEDirect:
     def typecast(payload_dict):
         new_dict = {}
         for key, val in payload_dict.items():
-            new_dict[key] = VEDirect.types[key](val)
+            try:
+                new_dict[key] = VEDirect.types[key](val)
+            except KeyError as exc:
+                log.warning(f"Got unknown VE key: {key}, skipping...")
         return new_dict
 
     fmt = {
