@@ -16,6 +16,11 @@
 # 2020 JMF
 
 import os, serial, time, argparse
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
+log = logging.getLogger(__name__)
 
 model_default = 'MPPT'
 
@@ -114,6 +119,8 @@ class VEDirectDeviceEmulator:
         return result
 
     def send_record(self):
+        record = self.get_bytes()
+        log.info(f"Sending: {record[:10]}...")
         self.writer(self.get_bytes())
 
     def get_record(self):
@@ -135,7 +142,7 @@ class VEDirectDeviceEmulator:
 def main():
     parser = argparse.ArgumentParser(description='A simple VE.Direct emulator')
     parser.add_argument('--port', help='Serial port to write', type=str, default='')
-    parser.add_argument('--n', help='number of records to send (or default=0 for infinite)', default=0, type=int)
+    parser.add_argument('--n', help='number of records to send (or default=-1 for infinite)', default=-1, type=int)
     parser.add_argument('--sph', default=60, help='samples per hour (default=False)', type=float)
     parser.add_argument('--model', help="one of ['ALL', 'BMV_600', 'BMV_700', 'MPPT', 'PHX_INVERTER']",
                         default=model_default, type=str)
