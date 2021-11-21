@@ -25,7 +25,10 @@ if not MICROPYTHON:
     import serial
 else:
     from machine import UART
-    from machine import Timer
+    try:
+        from machine import Timer
+    except ImportError as _:
+        Timer = None
 
 
 def int_base_guess(string_val):
@@ -272,8 +275,13 @@ class VEDirect:
         """
         self.serialport = serialport
         if MICROPYTHON:
-            self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
-            self.ser.init(baudrate=19200, timeout_chars=10)
+            if "xbee" in sys.platform:
+                self.ser = UART(int(serialport), baudrate=19200, timeout=timeout * 1000)
+                # Docs are unclear if you need to call init.
+                self.ser.init(baudrate=19200, timeout=timeout * 1000)
+            else:
+                self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
+                self.ser.init(baudrate=19200, timeout_chars=10)
         else:
             self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
         self.header1 = b'\n'
@@ -385,7 +393,7 @@ class VEDirect:
         timer = None
         if flush and not MICROPYTHON:
             self.ser.flushInput()
-        if timeout and MICROPYTHON:
+        if timeout and MICROPYTHON and Timer:
             timer = Timer.Chrono()
             timer.start()
         while True:
