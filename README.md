@@ -27,4 +27,9 @@ ve = VEDirect("COM5")
 # Or on micropython, e.g. Fipy
 ve = VEDirect("1")
 res = ve.read_data_single()
+# Or use a custom / already opened port (caution! Not well tested)
+from machine import UART
+alt_uart = UART(1, baudrate=19200, pins=(None,'P22'))  # RX only on pin22
+ve = VEDirect(alt_uart, timeout=5)
+res = ve.read_data_single()
 ```
