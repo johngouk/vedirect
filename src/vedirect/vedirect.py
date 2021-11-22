@@ -266,24 +266,32 @@ class VEDirect:
     # A list of received but not consumed records
     _buff_records = list()
 
-    def __init__(self, serialport='', timeout=60):
+    def __init__(self, serialport, timeout=60):
         """ Constructor for a Victron VEDirect serial communication session.
 
         Params:
-            serialport (str): The name or number of the serial port to open
+            serialport (str or "io.IOBase"): The name or number of the serial port to open OR
+                an already opened interface that adheres the serial interface
             timeout (float): Read timeout value (seconds)
         """
-        self.serialport = serialport
-        if MICROPYTHON:
-            if "xbee" in sys.platform:
-                self.ser = UART(int(serialport), baudrate=19200, timeout=timeout * 1000)
-                # Docs are unclear if you need to call init.
-                self.ser.init(baudrate=19200, timeout=timeout * 1000)
+        if isinstance(serialport, str):
+            log.debug("VEDirect init opening serial port: {}".format(serialport))
+            self.serialport = serialport
+            if MICROPYTHON:
+                if "xbee" in sys.platform:
+                    self.ser = UART(int(serialport), baudrate=19200, timeout=timeout * 1000)
+                    # Docs are unclear if you need to call init.
+                    self.ser.init(baudrate=19200, timeout=timeout * 1000)
+                else:
+                    self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
+                    self.ser.init(baudrate=19200, timeout_chars=10)
             else:
-                self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
-                self.ser.init(baudrate=19200, timeout_chars=10)
+                self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
         else:
-            self.ser = serial.Serial(port=serialport, baudrate=19200, timeout=timeout)
+            log.debug("VEDirect init using passed in serial port: {}".format(str(serialport)))
+            self.serialport = str(serialport)
+            self.ser = serialport
+
         self.header1 = b'\n'
         self.hexmarker = b':'
         self.delimiter = b'\t'
