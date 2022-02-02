@@ -14,11 +14,11 @@ from typing import List, Dict
 
 log = logging.getLogger(__name__)
 
-
-MICROPYTHON = False
 # Protect for micropython version
 if "micropython" in str(sys.implementation):
     MICROPYTHON = True
+else:
+    MICROPYTHON = False
 
 if not MICROPYTHON:
     import argparse
