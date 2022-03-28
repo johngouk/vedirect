@@ -9,6 +9,7 @@ else:
 
 class VEDirectAsyncio(_VEDirect):
     """An asyncio implementation of a VEDirect interface"""
+
     def __init__(self, serialport, timeout=60):
         super().__init__(serialport, timeout)
         self.stream_reader = asyncio.StreamReader(self.ser)
@@ -25,7 +26,7 @@ class VEDirectAsyncio(_VEDirect):
 
     async def read(self):
         """In asyncio, this is the main interface function to read a record from VEDirect.
-        
+
         It will await a record until a complete record is received OR self.timeout is reached.
         If it timesout, a TimeoutError will be raised.
         """
