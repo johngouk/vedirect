@@ -6,8 +6,10 @@ import sys
 from serial import SerialBase
 import asyncio
 import pytest_asyncio
+
 # noinspection PyUnresolvedReferences
 import serial
+
 # logging.basicConfig(level=logging.DEBUG)
 
 
@@ -22,6 +24,7 @@ def fake_serial():
         mock.return_value = dummy
         yield dummy
 
+
 @pytest_asyncio.fixture(scope="function")
 async def fake_async_serial():
     fake_stream = asyncio.streams.StreamReader()
@@ -30,12 +33,14 @@ async def fake_async_serial():
         mock.return_value = fake_stream
         yield fake_stream
 
+
 @fixture(scope="module")
 def fake_micropython():
     original_modules = sys.modules
     original_modules["uasyncio"] = asyncio
     # monkeypatch.setattr(sys, "modules", original_modules)
-    with patch("vedirect.vedirect.MICROPYTHON", spec=bool) as mock_micropython,\
-        patch.object(sys, "modules", new=original_modules):
+    with patch(
+        "vedirect.vedirect.MICROPYTHON", spec=bool
+    ) as mock_micropython, patch.object(sys, "modules", new=original_modules):
         mock_micropython = True
         yield
