@@ -7,18 +7,17 @@
 # https://www.sv-zanshin.com/r/manuals/victron-ve-direct-protocol.pdf
 
 
-import time
 import sys
 import logging
-from typing import List, Dict
 
-log = logging.getLogger(__name__)
+log = logging.getLogger("vedirect")
+log.setLevel(logging.WARNING)
 
+
+MICROPYTHON = False
 # Protect for micropython version
 if "micropython" in str(sys.implementation):
     MICROPYTHON = True
-else:
-    MICROPYTHON = False
 
 if not MICROPYTHON:
     import argparse
@@ -287,7 +286,7 @@ class VEDirect:
             try:
                 new_dict[key] = VEDirect.types[key](val)
             except KeyError as exc:
-                log.warning(f"Got unknown VE key: {key}, skipping...")
+                log.warning("Got unknown VE key: {}, skipping...".format(key))
         return new_dict
 
     fmt = {
@@ -338,6 +337,7 @@ class VEDirect:
             self.ser = serialport
 
         self.header1 = b"\n"
+        self.header2 = b"\r"
         self.hexmarker = b":"
         self.delimiter = b"\t"
         self.key = b""
@@ -393,7 +393,7 @@ class VEDirect:
                     self.dict[str(self.key.decode(self.encoding))] = str(
                         self.value.decode(self.encoding)
                     )
-                except UnicodeDecodeError:
+                except UnicodeError:
                     log.warning(
                         "Could not decode key {} and value {}".format(
                             self.key, self.value
@@ -426,13 +426,14 @@ class VEDirect:
                 )
                 self.bytes_sum = 0
         elif self.state == self.HEX:
+            log.warning("_input is in HEX state. Current byte: {}, current value: {}".format(byte, self.value))
             self.bytes_sum = 0
             if byte == self.header2:
                 self.state = self.WAIT_HEADER1
         else:
             raise AssertionError()
 
-    def read(self) -> List[Dict]:
+    def read(self):
         """
         Check for input buffer, process if present, return record if complete. Non-blocking
         """
