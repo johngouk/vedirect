@@ -9,7 +9,6 @@
 
 import sys
 import logging
-from micropython import const
 
 MICROPYTHON = True
 log = logging.getLogger(__name__)
@@ -18,11 +17,17 @@ log.record = ESPLogRecord()
 
 from machine import UART
 
+#try:
+#    from machine import Timer
+#except ImportError as _:
+Timer = None
+
+
 def int_base_guess(string_val):
     return int(string_val, 0)
 
 
-class VEDirect(VEDirectBase):
+class VEDirect:
     encoding = "utf-8"
 
     error_codes = {
@@ -295,19 +300,34 @@ class VEDirect(VEDirectBase):
         """Constructor for a Victron VEDirect serial communication session.
 
         Params:
-            serialport (int): The number of the UART to open OR
+            serialport (str or "io.IOBase"): The name or number of the serial port to open OR
                 an already opened interface that adheres the serial interface
             timeout (float): Read timeout value (seconds)
         """
         log.debug("serialport is %s", type(serialport))
-        if isinstance(serialport, int):
-            log.debug(const("VEDirect init opening UART %d"), serialport)
+        if isinstance(serialport, str):
+            log.debug("VEDirect init opening serial port: {}".format(serialport))
             self.serialport = serialport
-            self.ser = UART(int(serialport), 19200, timeout=timeout)  # E.g. for fipy 0,1, or 2
-            #self.ser.init(baudrate=19200, timeout_chars=10)
+            if MICROPYTHON:
+                if "xbee" in sys.platform:
+                    log.debug("Opening xbee UART %d...", serialport)
+                    self.ser = UART(
+                        int(serialport), baudrate=19200, timeout=timeout * 1000
+                    )
+                    # Docs are unclear if you need to call init.
+                    self.ser.init(baudrate=19200, timeout=timeout * 1000)
+                else:
+                    log.debug("Opening UART %d...", serialport)
+                    self.ser = UART(int(serialport))  # E.g. for fipy 0,1, or 2
+                    self.ser.init(baudrate=19200, timeout_chars=10)
+            else:
+                log.debug("Opening Serial port %s...", serialport)
+                self.ser = serial.Serial(
+                    port=serialport, baudrate=19200, timeout=timeout
+                )
         else:
             log.debug(
-                const("VEDirect init using passed in serial port: %s"),str(serialport)
+                "VEDirect init using passed in serial port: {}".format(str(serialport))
             )
             self.serialport = str(serialport)
             self.ser = serialport
@@ -321,6 +341,12 @@ class VEDirect(VEDirectBase):
         self.bytes_sum = 0
         self.state = self.WAIT_HEADER1
         self.dict = {}
+        if not MICROPYTHON:
+            if hasattr(self.ser, "flushInput"):
+                self.ser.flushInput()
+            else:
+                # Changed in pyserial>=3.0
+                self.ser.reset_input_buffer()
 
     (HEX, WAIT_HEADER1, IN_KEY, IN_VALUE, IN_CHECKSUM) = range(5)
 
@@ -335,7 +361,6 @@ class VEDirect(VEDirectBase):
 
         if self.state is not self.HEX:
             self.bytes_sum += ord(byte)
-            log.debug("CRC: %d", self.bytes_sum)
             if byte == b"\r":
                 # Ignore these, they are optional. Do count towards CRC!
                 log.debug("Skipping carriage return")
@@ -346,7 +371,6 @@ class VEDirect(VEDirectBase):
                 log.debug("Found header1")
                 self.state = self.IN_KEY
             return None
-        
         elif self.state == self.IN_KEY:
             if byte == self.delimiter:
                 log.debug("Found delimiter")
@@ -358,15 +382,13 @@ class VEDirect(VEDirectBase):
             else:
                 self.key += byte
             return None
-        
         elif self.state == self.IN_VALUE:
             if byte == self.header1:
                 log.debug("Found header1, ending value read")
                 try:
-                    key = str(self.key.decode(self.encoding))
-                    value = str(self.value.decode(self.encoding))
-                    log.info("Adding entry %s:%s",key, value)
-                    self.dict[key] = value
+                    self.dict[str(self.key.decode(self.encoding))] = str(
+                        self.value.decode(self.encoding)
+                    )
                 except UnicodeError:
                     log.warning(
                         "Could not decode key {} and value {}".format(
@@ -379,10 +401,12 @@ class VEDirect(VEDirectBase):
             else:
                 self.value += byte
             return None
-        
         elif self.state == self.IN_CHECKSUM:
-            log.debug("Checking checksum... Current %d, CRC %d",
-                    self.bytes_sum % 256, ord(byte))
+            log.debug(
+                "Checking checksum... Current {}, CRC {}".format(
+                    self.bytes_sum % 256, ord(byte)
+                )
+            )
             self.key = b""
             self.value = b""
             self.state = self.WAIT_HEADER1
@@ -390,43 +414,36 @@ class VEDirect(VEDirectBase):
                 self.bytes_sum = 0
                 dict_copy = self.dict.copy()
                 self.dict = {}  # clear the holder - ready for a new record
-                log.info("Returning record")
                 return dict_copy
             else:
                 # print('Malformed record')
-                log.error(
+                log.debug(
                     "Malformed record, Remainder: {}".format(self.bytes_sum % 256)
                 )
                 self.bytes_sum = 0
-        
         elif self.state == self.HEX:
             log.warning("_input is in HEX state. Current byte: {}, current value: {}".format(byte, self.value))
             self.bytes_sum = 0
             if byte == self.header2:
                 self.state = self.WAIT_HEADER1
-        
         else:
             raise AssertionError()
 
     def read(self):
         """
-        Check for input buffer, process if present, return record if complete. 
+        Check for input buffer, process if present, return record if complete. Non-blocking
         """
-        if hasattr(self.ser, '__any__'):
-            input_buf_len = self.ser.any()
-        else:
-            input_buf_len = -1
-        log.debug("Input buffer %d chars",input_buf_len)
+        if not MICROPYTHON:
+            raise NotImplementedError()
+        input_buf_len = self.ser.any()
         if input_buf_len:
             input_buf = self.ser.read(input_buf_len)
-            log.debug("Input: %d bytes read",len(input_buf))
             for byte in input_buf:
                 record = self._input(byte.to_bytes(1, sys.byteorder))
                 if record is not None:
                     record = self.typecast(record)
                     self._buff_records.append(record)
         try:
-            log.debug("Returning records")
             return self._buff_records.pop()
         except IndexError:
             return None

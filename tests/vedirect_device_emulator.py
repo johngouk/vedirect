@@ -204,6 +204,7 @@ class VEDirectDeviceEmulator:
 
     def writetofd(self, s):
         """Write a file (for testing)"""
+        print("Emulator port",type(self.serialport))
         os.write(self.serialport, s)
 
     def record_to_bytes(self, datadict):
@@ -246,6 +247,7 @@ class VEDirectDeviceEmulator:
 def main():
     parser = argparse.ArgumentParser(description="A simple VE.Direct emulator")
     parser.add_argument("--port", help="Serial port to write", type=str, default="")
+    parser.add_argument("--file", help="Filename to write data to", type=str, default="")
     parser.add_argument(
         "--n",
         help="number of records to send (or default=-1 for infinite)",
@@ -262,14 +264,30 @@ def main():
         type=str,
     )
     args = parser.parse_args()
+    fd = None
+    output = None
     if args.port:
+        output = args.port
         destination = f"serial port {args.port}"
+    elif args.file:
+        destination = args.file
+        #try:
+        #fd = open(args.file,mode="w")
+        fd = os.open(args.file,os.O_WRONLY | os.O_CREAT)
+        output = fd
+        print(type(fd))
+        #except Exception:
+        #    pass
     else:
         destination = f"<stdout>"
+        
     print(f"VEDirect emulator running. Writing to {destination}")
-    VEDirectDeviceEmulator(args.port, model=args.model).send_records(
+    VEDirectDeviceEmulator(output, model=args.model).send_records(
         n=args.n, samples_per_hour=args.sph
-    )
+        )
+        
+    if (fd != None):
+        os.close(fd)
     print("Done")
 
 
