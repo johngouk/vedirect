@@ -30,21 +30,22 @@
 
 import sys
 import logging
+import asyncio
 from micropython import const
+from collections import deque
 
-MICROPYTHON = True
 log = logging.getLogger(__name__)
 from ESPLogRecord import ESPLogRecord
 log.record = ESPLogRecord()
 
 from machine import UART
 
-from .vedevice import VEDirectBase
+from vedirect.vedirect_base import VEDirectBase
 
 class VEDirectAsyncio(VEDirectBase):
 
     def __init__(self, uart=None, uartId=None, rx=None, tx=None, callback=None):
-        super().__init()
+        super().__init__()
 
         self._uart = uart
         self._uartId = uartId
@@ -60,12 +61,13 @@ class VEDirectAsyncio(VEDirectBase):
         elif (uartId is not None) and (rx is not None) and (tx is not None):
             # We have to open our own UART
             log.info("Opening UART %s, rx %d tx %d", uartId, rx, tx)
-            self._uart = UART(uartid)
-            self._uart.init(baudrate=19200, rx=rx. tx=tx) # We assume you've used the pins you want to
+            self._uart = UART(uartId)
+            self._uart.init(baudrate=19200, rx=rx, tx=tx) # We assume you've used the pins you want to
         else:
             # Get your act together guys, work with me here!
             log.error("You're having a laugh, I need either a UART or a set of UART parameters!")
             raise Exception("You're having a laugh, I need either a UART or a set of UART parameters!")
+        log.info("starting read loop task")
         self._run = asyncio.create_task(self._go())  # Thread runs forever
 
     def getRecord(self):
@@ -89,10 +91,12 @@ class VEDirectAsyncio(VEDirectBase):
             Loops checking port for any input
         '''
         while True:
+            log.debug("readloop task")
             while self._uart.any(): # Any data on the serial port??
+                log.debug("readloop task - data present")
                 byte = self._uart.read(1) # OK, read a byte
                 if byte:
-                    log.debug("Read: 0x%02x", byte)
+                    log.debug("Read: %s", byte)
                     # got a byte (didn't time out)
                     record = self._input(byte)
                     if record is not None:
@@ -104,5 +108,6 @@ class VEDirectAsyncio(VEDirectBase):
             # 19200 baud, 10 bits/char (8, 1 parity, 1 stop) => 2000 chars/sec
             # Records are sent 1/sec, maybe 250 chars/record => 125ms transmit per record
             # Let's try 250msec, which means we shouldn't miss any
+            log.debug("readloop - wait")
             await asyncio.sleep_ms(250)
 

@@ -15,9 +15,16 @@
 #
 # 2020 JMF
 
-import os, serial, time, argparse
+import os, time, argparse
 import logging
 
+try:
+    from machine import UART
+    MICROPYTHON = True
+except Exception:
+    import serial
+    MICROPYTHON = False
+    
 logging.basicConfig(level=logging.DEBUG)
 
 log = logging.getLogger(__name__)
@@ -192,15 +199,21 @@ class VEDirectDeviceEmulator:
         """
         self.serialport = serialport
         self.model = model
-        if isinstance(serialport, str):
-            if not serialport:
-                self.writer = print
-            else:
-                self.ser = serial.Serial(serialport, 19200, timeout=0)
-                self.writer = self.ser.write
+        if MICROPYTHON:
+            # Serial port is a UART
+            self.ser = serialport
+            self.ser.init(19200)
+            self.writer = self.ser.write
         else:
-            # serialport must be file descriptor
-            self.writer = self.writetofd
+            if isinstance(serialport, str):
+                if not serialport:
+                    self.writer = print
+                else:
+                    self.ser = serial.Serial(serialport, 19200, timeout=0)
+                    self.writer = self.ser.write
+            else:
+                # serialport must be file descriptor
+                self.writer = self.writetofd
 
     def writetofd(self, s):
         """Write a file (for testing)"""
@@ -278,6 +291,12 @@ def main():
         print(type(fd))
         #except Exception:
         #    pass
+    elif args.uart:
+        destination = "uart"
+        if not MICROPYTHON:
+            raise Exception("UART only on MPy")
+        uart = UART(1, tx=10, rx=9)
+        output = uart
     else:
         destination = f"<stdout>"
         
